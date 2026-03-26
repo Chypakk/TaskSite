@@ -28,3 +28,6 @@ go.work.sum
 /test_program
 .vscode/
 !.vscode/settings.json
+
+# Database files
+*.db
