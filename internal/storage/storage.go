@@ -5,12 +5,14 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"strings"
 	"tasksite/internal/model"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 )
 
@@ -68,6 +70,8 @@ func runMigrations(db *sql.DB) error {
 	log.Println("Migrations applied successfully")
 	return nil
 }
+
+// --- РАБОТА С ТАСКАМИ ---
 
 func (s *Storage) CreateTask(name string) (*model.Task, error) {
 	result, err := s.db.Exec(
@@ -134,4 +138,55 @@ func (s *Storage) DeleteTask(id int) error {
 // Close закрывает подключение к БД
 func (s *Storage) Close() error {
 	return s.db.Close()
+}
+
+// --- РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ---
+
+func (s *Storage) CreateUser(username, password string) (*model.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := s.db.Exec("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			return nil, fmt.Errorf("username already exists")
+		}
+		return nil, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.User{
+		ID:           int(id),
+		Username:     username,
+		PasswordHash: string(hash),
+		CreatedAt:    time.Now(),
+	}, nil
+}
+
+func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
+	row := s.db.QueryRow(
+		"SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
+		username,
+	)
+	
+	var user model.User
+	var createdAtStr string
+
+	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &createdAtStr)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, err
+	}
+	
+	user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+
+	return &user, nil
 }
