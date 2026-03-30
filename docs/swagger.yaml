@@ -1,0 +1,184 @@
+basePath: /api
+definitions:
+  model.CreateTaskRequest:
+    properties:
+      name:
+        example: Задача 1
+        type: string
+    type: object
+  model.LoginRequest:
+    properties:
+      password:
+        example: secret123
+        type: string
+      username:
+        example: test
+        type: string
+    type: object
+  model.LoginResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+      message:
+        example: Login successful
+        type: string
+      token:
+        example: a1b2c3d4e5f6...
+        type: string
+      username:
+        example: test
+        type: string
+    type: object
+  model.RegisterRequest:
+    properties:
+      password:
+        example: secret123
+        type: string
+      username:
+        example: test
+        type: string
+    type: object
+  model.Task:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  model.User:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      username:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Простая тикет-система с авторизацией
+  title: TaskSite API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет логин/пароль и выдаёт токен сессии
+      parameters:
+      - description: Данные входа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.LoginResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Invalid credentials
+          schema:
+            type: string
+      summary: Вход в систему
+      tags:
+      - auth
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт нового пользователя
+      parameters:
+      - description: Данные регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.User'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "409":
+          description: Username already exists
+          schema:
+            type: string
+      summary: Регистрация пользователя
+      tags:
+      - auth
+  /tasks:
+    get:
+      description: Возвращает список задач (требуется авторизация)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Task'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      security:
+      - SessionToken: []
+      summary: Получить все задачи
+      tags:
+      - tasks
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новую задачу (требуется авторизация)
+      parameters:
+      - description: Название задачи
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateTaskRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Task'
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      security:
+      - SessionToken: []
+      summary: Создать задачу
+      tags:
+      - tasks
+securityDefinitions:
+  SessionToken:
+    in: header
+    name: X-Session-Token
+    type: apiKey
+swagger: "2.0"

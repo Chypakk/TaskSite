@@ -13,19 +13,29 @@ type TaskHandler struct {
 	storage *storage.Storage
 }
 
-func NewTaskHandler(storage *storage.Storage) *TaskHandler{
+func NewTaskHandler(storage *storage.Storage) *TaskHandler {
 	return &TaskHandler{storage: storage}
 }
 
-func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request){
+// CreateTask godoc
+// @Summary      Создать задачу
+// @Description  Создаёт новую задачу (требуется авторизация)
+// @Tags         tasks
+// @Accept       json
+// @Produce      json
+// @Security     SessionToken
+// @Param        request  body  model.CreateTaskRequest  true  "Название задачи"
+// @Success      201  {object}  model.Task
+// @Failure      400  {string}  string  "Invalid request body"
+// @Failure      401  {string}  string  "Unauthorized"
+// @Router       /tasks [post]
+func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req struct{
-		Name string `json:"name"`
-	}
+	var req model.CreateTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -49,7 +59,16 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(task)
 }
 
-func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request)  {
+// GetTasks godoc
+// @Summary      Получить все задачи
+// @Description  Возвращает список задач (требуется авторизация)
+// @Tags         tasks
+// @Produce      json
+// @Security     SessionToken
+// @Success      200  {array}  model.Task
+// @Failure      401  {string}  string  "Unauthorized"
+// @Router       /tasks [get]
+func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -69,7 +88,7 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request)  {
 	json.NewEncoder(w).Encode(tasks)
 }
 
-func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request)  {
+func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

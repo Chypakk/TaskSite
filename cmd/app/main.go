@@ -1,11 +1,24 @@
+// @title        TaskSite API
+// @version      1.0
+// @description  Простая тикет-система с авторизацией
+// @host         localhost:8080
+// @BasePath     /api
+// @securityDefinitions.apikey  SessionToken
+// @in           header
+// @name         X-Session-Token
 package main
 
 import (
 	"log"
 	"net/http"
 	"os"
+
 	"tasksite/internal/handler"
 	"tasksite/internal/storage"
+
+	_ "tasksite/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
@@ -13,7 +26,6 @@ func main() {
 	if dbPath == "" {
 		dbPath = "tasksite.db"
 	}
-
 	storage, err := storage.ConnectDB(dbPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
@@ -51,6 +63,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
+
+	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
