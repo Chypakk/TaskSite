@@ -66,6 +66,9 @@ func main() {
 
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
+	fs := http.FileServer(http.Dir("../../static"))
+	http.Handle("/", fs)
+
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
