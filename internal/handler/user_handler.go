@@ -11,11 +11,15 @@ import (
 )
 
 type UserHandler struct {
-	storage *storage.Storage
+	storage      *storage.Storage
+	sessionStore *SessionStore
 }
 
 func NewUserHandler(storage *storage.Storage) *UserHandler {
-	return &UserHandler{storage: storage}
+	return &UserHandler{
+		storage:      storage,
+		sessionStore: NewSessionStore(),
+	}
 }
 
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +55,11 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	var req struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
@@ -73,11 +82,18 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token := h.sessionStore.CreateSession(user.Username)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":  "Login successful",
+		"token":    token,
 		"username": user.Username,
 		"id":       user.ID,
 	})
+}
+
+func (h *UserHandler) GetSessionStore() *SessionStore {
+	return h.sessionStore
 }

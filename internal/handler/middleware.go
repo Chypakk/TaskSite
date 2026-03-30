@@ -39,19 +39,24 @@ func (s *SessionStore) CreateSession(username string) string {
 }
 
 func (s *SessionStore) ValidateSession(token string) (string, bool) {
-	s.mu.RLock()
+	s.mu.Lock()
 	session, exists := s.sessions[token]
-	s.mu.RUnlock()
+	
 	
 	if !exists {
+		s.mu.Unlock()
 		return "", false
 	}
 
 	if time.Now().After(session.ExpiresAt) {
 		s.DeleteSession(token)
+		s.mu.Unlock()
 		return "", false
 	}
 	
+	session.ExpiresAt = time.Now().Add(24 * time.Hour)
+
+	s.mu.Unlock()
 	return session.Username, true
 }
 

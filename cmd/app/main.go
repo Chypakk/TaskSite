@@ -21,8 +21,14 @@ func main() {
 	defer storage.Close()
 
 	taskHandler := handler.NewTaskHandler(storage)
+	userHandler := handler.NewUserHandler(storage)
 
-	http.HandleFunc("/api/tasks", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/register", userHandler.Register)
+	http.HandleFunc("/api/login", userHandler.Login)
+
+	sessionStore := userHandler.GetSessionStore()
+
+	http.HandleFunc("/api/tasks", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			taskHandler.GetTasks(w, r)
@@ -31,15 +37,15 @@ func main() {
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
+	}))
 
-	http.HandleFunc("/api/tasks/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/tasks/", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
 			taskHandler.DeleteTask(w, r)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-	})
+	}))
 
 	port := os.Getenv("PORT")
 	if port == "" {
