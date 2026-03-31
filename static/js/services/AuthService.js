@@ -3,8 +3,8 @@ import { AuthResult } from '../models/AuthResult.js';
 import { ApiService } from './ApiService.js';
 
 export class AuthService {
-    constructor(apiBaseUrl) {
-        this.apiService = new ApiService(apiBaseUrl);;
+    constructor() {
+        this.apiService = new ApiService();;
         this.currentUser = new User();
     }
     

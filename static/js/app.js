@@ -1,12 +1,13 @@
 
 import { AuthModal } from './components/AuthModal.js';
-
+import { AuthService } from './services/AuthService.js';
 
 class Program {
 
     constructor() {
         this.isInitialized = false;
         this.authModal = null;
+        this.authService = new AuthService();
     }
 
      async initialize() {
