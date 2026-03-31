@@ -46,7 +46,7 @@ export class AuthModal {
             this.handleLogin();
         });
         
-        document.getElementById('registryForm').addEventListener('submit', (e) => {
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleRegister();
         });

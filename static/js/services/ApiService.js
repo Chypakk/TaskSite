@@ -1,10 +1,9 @@
 export class ApiService {
-    constructor(baseUrl) {
-        this.baseUrl = baseUrl;
+    constructor() {
     }
     
     async request(endpoint, options = {}) {
-        const url = `${this.baseUrl}${endpoint}`;
+        const url = `${endpoint}`;
         const config = {
             headers: {
                 'Content-Type': 'application/json',
