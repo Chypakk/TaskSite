@@ -1,0 +1,51 @@
+
+body {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    margin: 0;
+    display: flex;
+    justify-content: flex-start; /* выравнивание по горизонтали: слева */
+    align-items: flex-start;     /* выравнивание по вертикали: сверху */
+    min-height: 100vh;
+    font-family: Helvetica Arial, sans-serif;
+}
+
+
+
+/* Авторизация и регистрация */
+
+.auth-container{
+    position: absolute;
+    z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+
+.btn-custom {
+    padding: 12px 30px;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border: none;
+    white-space: nowrap; /* запрещает перенос текста */
+}
+
+.btn-custom:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.login-text{
+    background-color: cornflowerblue;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 12px 30px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #6c757d;
+}

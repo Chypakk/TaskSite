@@ -1,0 +1,129 @@
+import { User } from '../models/User.js';
+import { AuthResult } from '../models/AuthResult.js';
+import { ApiService } from './ApiService.js';
+
+export class AuthService {
+    constructor(apiBaseUrl) {
+        this.apiService = new ApiService(apiBaseUrl);;
+        this.currentUser = new User();
+    }
+    
+    async login(username, password) {
+        try {
+
+            const validationError = this.validateCredentials(username, password);
+            if (validationError) {
+                return AuthResult.failure(validationError);
+            }
+
+            const userData = await this.apiService.post('/api/login', {
+                username, 
+                password 
+            });
+
+            this.currentUser = new User(userData);
+            this.saveToStorage();
+
+            return AuthResult.success(this.currentUser);
+            
+        } catch (error) {
+            console.error('Login error:', error);
+            return AuthResult.failure(this.handleApiError(error));
+        }
+    }
+    
+    async register(username, password, confirmPassword) {
+        try {
+            const validationError = this.validateRegistration(username, password, confirmPassword);
+            if (validationError) {
+                return AuthResult.failure(validationError);
+            }
+            
+            // Используем ApiService
+            const userData = await this.apiService.post('/api/register', {
+                username, 
+                password 
+            });
+            
+            this.currentUser = new User(userData);
+            this.saveToStorage();
+            
+            return AuthResult.success(this.currentUser);
+            
+        } catch (error) {
+            console.error('Registration error:', error);
+            return AuthResult.failure(this.handleApiError(error));
+        }
+    }
+
+    logout() {
+        this.currentUser = new User();
+        this.clearStorage();
+        return AuthResult.success(null);
+    }
+    
+    tryAutoLogin() {
+        try {
+            const storedUser = localStorage.getItem('token');
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                this.currentUser = new User(userData);
+                return AuthResult.success(this.currentUser);
+            }
+            return AuthResult.failure('No stored session');
+        } catch (error) {
+            this.clearStorage();
+            return AuthResult.failure('Invalid stored data');
+        }
+    }
+    
+
+    handleApiError(error) {
+        if (error.name === 'ApiError') {
+            // Обрабатываем структурированную ошибку от ApiService
+            return error.details.message || error.details.title || error.statusText;
+        }
+        
+        // Сетевые ошибки и пр.
+        if (error.message.includes('Failed to fetch')) {
+            return 'Сетевая ошибка. Проверьте подключение к интернету.';
+        }
+        
+        return 'Неизвестная ошибка';
+    }
+
+    validateCredentials(username, password) {
+        if (!username || username.trim().length < 3) {
+            return 'Имя пользователя должно быть не менее 3 символов';
+        }
+        if (!password || password.length < 4) {
+            return 'Пароль должен быть не менее 4 символов';
+        }
+        return null;
+    }
+    
+    validateRegistration(username, password, confirmPassword) {
+        const credentialError = this.validateCredentials(username, password);
+        if (credentialError) return credentialError;
+        
+        if (password !== confirmPassword) {
+            return 'Пароли не совпадают';
+        }
+        
+        if (username.length > 20) {
+            return 'Имя пользователя слишком длинное';
+        }
+        
+        return null;
+    }
+    
+    saveToStorage() {
+        localStorage.setItem('token', this.currentUser.token);
+        localStorage.setItem('username', this.currentUser.username);
+    }
+    
+    clearStorage() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+    }
+}
