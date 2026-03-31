@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"tasksite/internal/handler"
 	"tasksite/internal/storage"
@@ -52,6 +53,12 @@ func main() {
 	}))
 
 	http.HandleFunc("/api/tasks/", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if strings.HasSuffix(path, "/claim") && r.Method == http.MethodPost {
+			taskHandler.ClaimTask(w, r)
+			return
+		}
+
 		if r.Method == http.MethodDelete {
 			taskHandler.DeleteTask(w, r)
 		} else {

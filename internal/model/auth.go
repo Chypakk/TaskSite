@@ -22,5 +22,7 @@ type LoginResponse struct {
 
 // CreateTaskRequest запрос создания задачи
 type CreateTaskRequest struct {
-	Name string `json:"name" example:"Задача 1"`
+	Name        string `json:"name" example:"Задача 1"`
+	Description string `json:"description" example:"Описание"`
+	Author      string `json:"author" example:"Пользователь1"`
 }
