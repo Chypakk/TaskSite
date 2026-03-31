@@ -1,9 +1,9 @@
 
 
-
 export class AuthModal {
-    constructor(authService) {
+    constructor(authService, onAuthSuccess) {
         this.authService = authService;
+        this.onAuthSuccess = onAuthSuccess;
         this.modalElement = null;
         this.bootstrapModal = null;
         this.currentTab = 'login';
@@ -103,7 +103,7 @@ export class AuthModal {
             this.showSuccess('login', 'Успешный вход!');
             setTimeout(() => {
                 this.hideModal();
-                //this.onAuthSuccess(result.data);
+                this.onAuthSuccess(result.data);
             }, 1000);
         } else {
             this.showError('login', result.error);
@@ -126,7 +126,7 @@ export class AuthModal {
             this.showSuccess('register', 'Регистрация успешна!');
             setTimeout(() => {
                 this.hideModal();
-                //this.onAuthSuccess(result.data);
+                this.onAuthSuccess(result.data);
             }, 1000);
         } else {
             this.showError('register', result.error);

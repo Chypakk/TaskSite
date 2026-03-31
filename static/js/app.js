@@ -18,7 +18,8 @@ class Program {
 
     initializeUI() {
         this.authModal = new AuthModal(
-            this.authService
+            this.authService,
+            (user) => this.onAuthSuccess(user)
         );
         this.authModal.initialize();
         this.bindAuthButtons();
@@ -36,15 +37,32 @@ class Program {
     }
 
     logout() {
-        // const result = this.authService.logout();
-        // if (result.success) {
+        const result = this.authService.logout();
+        if (result.success) {
             document.getElementById('usernameDisplay').value = '';
             document.getElementById('quit').hidden = true;
             document.getElementById('regLog').hidden = false;
-            this.updateBalanceDisplay();
-            this.hideAllInteriors();
             console.log('User logged out');
-        // }
+        }
+    }
+
+    async onAuthSuccess(user) {
+        try {
+            console.log('User authenticated:', user.username);
+            this.updateUserInterface(user);
+        } catch (error) {
+            console.error('Error handling auth success:', error);
+        }
+    }
+
+    updateUserInterface(user) {
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        if (usernameDisplay) {
+            usernameDisplay.value = user.username;
+        }
+        
+        document.getElementById('quit').hidden = false;
+        document.getElementById('regLog').hidden = true;
     }
 }
 
