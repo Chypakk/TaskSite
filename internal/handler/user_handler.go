@@ -58,9 +58,20 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token := h.sessionStore.CreateSession(user.Username)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(model.LoginResponse{
+		Message:  "Login successful",
+		Token:    token,
+		Username: user.Username,
+		ID:       user.ID,
+	})
+
+	// w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(http.StatusCreated)
+	// json.NewEncoder(w).Encode(user)
 }
 
 // Login godoc
@@ -112,9 +123,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
-    token := r.Header.Get("X-Session-Token")
-    h.sessionStore.DeleteSession(token)
-    w.WriteHeader(http.StatusNoContent)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	token := r.Header.Get("X-Session-Token")
+	h.sessionStore.DeleteSession(token)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHandler) GetSessionStore() *SessionStore {
