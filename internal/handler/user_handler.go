@@ -50,7 +50,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	user, err := h.storage.CreateUser(req.Username, req.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
-			http.Error(w, "Username already exists", http.StatusConflict) // 409
+			http.Error(w, "Username already exists", http.StatusConflict)
 			return
 		}
 
@@ -109,6 +109,12 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Username: user.Username,
 		ID:       user.ID,
 	})
+}
+
+func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+    token := r.Header.Get("X-Session-Token")
+    h.sessionStore.DeleteSession(token)
+    w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHandler) GetSessionStore() *SessionStore {

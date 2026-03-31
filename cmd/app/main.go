@@ -35,11 +35,12 @@ func main() {
 
 	taskHandler := handler.NewTaskHandler(storage)
 	userHandler := handler.NewUserHandler(storage)
+	
+	sessionStore := userHandler.GetSessionStore()
 
 	http.HandleFunc("/api/register", userHandler.Register)
 	http.HandleFunc("/api/login", userHandler.Login)
-
-	sessionStore := userHandler.GetSessionStore()
+	http.HandleFunc("/api/logout", sessionStore.AuthMiddleware(userHandler.Logout))
 
 	http.HandleFunc("/api/tasks", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
