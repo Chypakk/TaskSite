@@ -73,10 +73,12 @@ func runMigrations(db *sql.DB) error {
 
 // --- РАБОТА С ТАСКАМИ ---
 
-func (s *Storage) CreateTask(name string) (*model.Task, error) {
+func (s *Storage) CreateTask(name, description, author string) (*model.Task, error) {
 	result, err := s.db.Exec(
-		"INSERT INTO tasks (name) VALUES (?)",
+		"INSERT INTO tasks (name, description, author, status) VALUES (?, ?, ?, 'pool')",
 		name,
+		description,
+		author,
 	)
 	if err != nil {
 		return nil, err
@@ -88,14 +90,26 @@ func (s *Storage) CreateTask(name string) (*model.Task, error) {
 	}
 
 	return &model.Task{
-		ID:        int(id),
-		Name:      name,
-		CreatedAt: time.Now(),
+		ID:          int(id),
+		Name:        name,
+		Author:      author,
+		Status:      "pool",
+		CreatedAt:   time.Now(),
+		Description: description,
 	}, nil
 }
 
-func (s *Storage) GetTasks() ([]model.Task, error) {
-	rows, err := s.db.Query("SELECT id, name, created_at FROM tasks ORDER BY id DESC")
+func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
+	query := "SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE 1=1"
+	var args []any
+
+	if statusFilter != nil {
+		query += " AND status = ?"
+		args = append(args, *statusFilter)
+	}
+
+	query += " ORDER BY id DESC"
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -104,21 +118,77 @@ func (s *Storage) GetTasks() ([]model.Task, error) {
 	tasks := make([]model.Task, 0)
 	for rows.Next() {
 		var task model.Task
-		var created_at string
+		var createdAtStr, completedAtStr sql.NullString
 
-		if err := rows.Scan(&task.ID, &task.Name, &created_at); err != nil {
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &createdAtStr, &completedAtStr); err != nil {
 			return nil, err
 		}
 
-		task.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", created_at)
+		if createdAtStr.Valid {
+			task.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr.String)
+		}
+		if completedAtStr.Valid {
+			task.CompletedAt, _ = time.Parse("2006-01-02 15:04:05", completedAtStr.String)
+		}
+
 		tasks = append(tasks, task)
 	}
 
 	return tasks, nil
 }
 
-func (s *Storage) DeleteTask(id int) error {
-	result, err := s.db.Exec("DELETE FROM tasks WHERE id = ?", id)
+func (s *Storage) GetTaskByID(taskID int) (*model.Task, error){
+	row := s.db.QueryRow(
+		"SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE id = ?",
+		taskID,
+	)
+
+	var task model.Task
+	var createdAtStr, completedAtStr sql.NullString
+
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &createdAtStr, &completedAtStr)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("task not found")
+		}
+		return nil, err
+	}
+
+	if createdAtStr.Valid {
+		task.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr.String)
+	}
+	if completedAtStr.Valid {
+		task.CompletedAt, _ = time.Parse("2006-01-02 15:04:05", completedAtStr.String)
+	}
+
+	return  &task, nil
+}
+
+func (s *Storage) ClaimTask(taskId, userId int) error{
+	result, err := s.db.Exec(
+		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status = 'pool'",
+		userId, taskId,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return fmt.Errorf("task not found or already claimed")
+	}
+
+	return nil
+}
+
+func (s *Storage) DeleteTask(id, userId int) error {
+	result, err := s.db.Exec("DELETE FROM tasks WHERE id = ? AND (user_id = ? OR user_id IS NULL)", id, userId)
 	if err != nil {
 		return err
 	}
@@ -129,7 +199,7 @@ func (s *Storage) DeleteTask(id int) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("task with id %d not found", id)
+		return fmt.Errorf("task not found or access denied")
 	}
 
 	return nil
@@ -174,7 +244,7 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 		"SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
 		username,
 	)
-	
+
 	var user model.User
 	var createdAtStr string
 
@@ -185,7 +255,7 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 		}
 		return nil, err
 	}
-	
+
 	user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
 
 	return &user, nil
