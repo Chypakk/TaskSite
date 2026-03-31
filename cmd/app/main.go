@@ -60,6 +60,11 @@ func main() {
 			return
 		}
 
+		if strings.HasSuffix(path, "/complete") && r.Method == http.MethodPost {
+			taskHandler.CompleteTask(w, r)
+			return
+		}
+
 		if r.Method == http.MethodDelete {
 			taskHandler.DeleteTask(w, r)
 		} else {

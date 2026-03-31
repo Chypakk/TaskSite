@@ -171,3 +171,37 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(task)
 }
+
+func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
+    path = strings.TrimSuffix(path, "/complete")
+    taskID, err := strconv.Atoi(path)
+    if err != nil {
+        http.Error(w, "Invalid task ID", http.StatusBadRequest)
+        return
+    }
+
+	username := r.Context().Value("username").(string)
+    user, err := h.storage.GetUserByUsername(username)
+    if err != nil {
+        http.Error(w, "User not found", http.StatusInternalServerError)
+        return
+    }
+
+	task, err := h.storage.CompleteTask(taskID, user.ID)
+    if err != nil {
+        if strings.Contains(err.Error(), "not found") {
+            http.Error(w, "Task not found", http.StatusNotFound)
+            return
+        }
+        if strings.Contains(err.Error(), "forbidden") {
+            http.Error(w, "You can only complete tasks assigned to you", http.StatusForbidden)
+            return
+        }
+        http.Error(w, "Failed to complete task", http.StatusInternalServerError)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(task)
+}
