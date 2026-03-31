@@ -19,7 +19,7 @@ export class ApiService {
         const response = await fetch(url, config);
         
         if (!response.ok) {
-            throw new ApiError(response.status, response.statusText, errorText);
+            throw new ApiError(response.status, response.statusText);
         }
         
         // Проверяем, есть ли контент для парсинга
