@@ -44,7 +44,7 @@ export class AuthService {
             const userData = await this.apiService.post('/api/register', {
                 username, 
                 password 
-            });
+            }).json();
             
             this.currentUser = new User(userData);
             this.saveToStorage();
@@ -60,19 +60,32 @@ export class AuthService {
 
     async logout() {
         const token = this.apiService._getSessionToken();
-        await this.apiService.post('/api/logout', null);
-        this.currentUser = new User();
-        this.clearStorage();
-        return AuthResult.success(null);
+        const result = await this.apiService.post('/api/logout', token);
+        if (result.ok){
+            this.currentUser = new User();
+            this.clearStorage();
+            return AuthResult.success(null);
+        }
+        else{
+            this.currentUser = new User();
+            this.clearStorage();
+            return AuthResult.failure('Logout failed');
+        }
     }
     
-    tryAutoLogin() {
+    async tryAutoLogin() {
         try {
             const storedUser = localStorage.getItem('token');
             if (storedUser) {
-                const userData = JSON.parse(storedUser);
-                this.currentUser = new User(userData);
-                return AuthResult.success(this.currentUser);
+                const response = await this.apiService.post('/api/logout', storedUser).json();
+                if (response.ok){
+                    const userData = JSON.parse(storedUser);
+                    this.currentUser = new User(userData);
+
+                    return AuthResult.success(this.currentUser);
+                }
+                this.clearStorage();
+                return AuthResult.failure('Invalid stored data');
             }
             return AuthResult.failure('No stored session');
         } catch (error) {

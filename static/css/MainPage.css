@@ -53,6 +53,22 @@ body {
     color: #6c757d;
 }
 
+/*Таблица*/
+
+#tasksTableBody tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#tasksTableBody tr:hover {
+    background-color: rgba(13, 110, 253, 0.1); /* Лёгкая подсветка */
+}
+
+/* Визуальный индикатор клика */
+#tasksTableBody tr:active {
+    background-color: rgba(13, 110, 253, 0.2);
+}
+
 /*Общие стили*/
 
 .textUI{
