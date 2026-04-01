@@ -36,7 +36,7 @@ export class AuthModal {
         this.setupTabs();
         this.isInitialized = true;
         
-        console.log('AuthModal загружен');
+        console.log('AuthModal initialized successfully');
     }
     
     bindEvents() {

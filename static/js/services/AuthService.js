@@ -28,6 +28,7 @@ export class AuthService {
             
         } catch (error) {
             console.error('Login error:', error);
+            this.clearStorage();
             return AuthResult.failure(this.handleApiError(error));
         }
     }
@@ -52,11 +53,14 @@ export class AuthService {
             
         } catch (error) {
             console.error('Registration error:', error);
+            this.clearStorage();
             return AuthResult.failure(this.handleApiError(error));
         }
     }
 
-    logout() {
+    async logout() {
+        const token = this.apiService._getSessionToken();
+        await this.apiService.post('/api/logout', null);
         this.currentUser = new User();
         this.clearStorage();
         return AuthResult.success(null);

@@ -19,14 +19,69 @@
 
 </head>
 <body>
-    <div id="app">
+    <div id="app" class='container-fluid'>
         <div class='container-fluid auth-container'>
-                <button class='show-Register-Form col-3 btn btn-primary btn-custom' id='regLog' data-bs-toggle='modal' data-bs-target='#authModal'>Зарегистрироваться или войти</button>
-                <button type='submit' class='show-Register-Form col-2 btn btn-primary btn-custom' id='quit' hidden>Выйти</button>
-                <input type='text' class='login-text col-1' id='usernameDisplay' disabled style='color: black;'></input>
+            <button class='show-Register-Form btn btn-primary btn-custom' id='regLog' data-bs-toggle='modal' data-bs-target='#authModal'>
+                Зарегистрироваться или войти
+            </button>
+            <button type='submit' class='show-Register-Form btn btn-primary btn-custom' id='quit' hidden>Выйти</button>
+            <input type='text' class='login-text' id='usernameDisplay' disabled style='color: black;'></input>
         </div>
-        
+
+        <div class="container-fluid mt-4" id="tasksSection">
+            <div class="d-flex justify-content-end  mb-3">
                 
+                <button class="btn btn-success btn-custom col-2" id="createTaskBtn">
+                    <i class="fas fa-plus"></i> Новая заявка
+                </button>
+                <button class="btn btn-success btn-custom col-2" id="uppdateTaskBtn">
+                    <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
+                </button>
+            </div>
+            
+            <!-- Фильтры (опционально) -->
+            <div class="row mb-3" id="taskFilters">
+                <div class="d-flex col-md-6">
+                    <h3 class="col-3 textUI">Мои заявки</h3>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">Все статусы</option>
+                        <option value="open">Открытые</option>
+                        <option value="in_progress">В работе</option>
+                        <option value="resolved">Завершённые</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Таблица -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tasksTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">№</th>
+                            <th scope="col">Название</th>
+                            <th scope="col">Описание</th>
+                            <th scope="col">Автор</th>
+                            <th scope="col">Статус</th>
+                            <th scope="col">Взята в работу</th>
+                            <th scope="col">Дата создания</th>
+                            <th scope="col">Завершена</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTableBody">
+                        
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Пагинация / загрузка -->
+            <div id="tasksLoading" class="text-center py-3" hidden>
+                <div class="spinner-border text-primary"></div>
+            </div>
+            <div id="tasksEmpty" class="text-center py-3" hidden>
+                <p class="text-muted">Заявок пока нет</p>
+            </div>
+        </div>
+
     </div>
 
 
@@ -120,5 +175,81 @@
             </div>
         </div>
     </div>
+
+    <div class='modal fade' tabindex='-1' id='createTaskModal' aria-hidden='true'>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <!-- Заголовок -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskModalTitle">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Новая заявка
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+
+                <!-- Тело с формой -->
+                <div class="modal-body">
+                    <form id="taskForm">
+                        
+                        <!-- ID -->
+                        <input type="hidden" id="taskId">
+                        
+                        <!-- Наименование -->
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="taskName" placeholder="Наименование" required>
+                            <label for="taskTitle">Наименование *</label>
+                            <div class="invalid-feedback">Введите наименование (мин. 3 символа)</div>
+                        </div>
+                        
+                        <!-- Описание -->
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="taskDescription" placeholder="Описание" 
+                                    style="height: 120px; resize: vertical;" required></textarea>
+                            <label for="taskDescription">Описание *</label>
+                            <div class="invalid-feedback">Введите описание проблемы</div>
+                        </div>
+                        
+                        <!-- Автор -->
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="taskAuthor" placeholder="Автор">
+                            <label for="taskAuthor">Автор</label>
+                        </div>
+                        
+                        <!-- Статус -->
+                        <div class="mb-3">
+                            <label for="taskStatus" class="form-label">Статус</label>
+                            <select class="form-select" id="taskStatus" required>
+                                <option value="open" selected>Открыта</option>
+                                <option value="in_progress">В работе</option>
+                                <option value="resolved">Завершена</option>
+                                <option value="closed">Закрыта</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Блок ошибок -->
+                        <div class="alert alert-danger alert-dismissible fade show" id="taskErrorAlert" style="display: none;">
+                            <strong>Ошибка!</strong> <span id="taskErrorText"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        
+                        <!-- Блок успеха -->
+                        <div class="alert alert-success alert-dismissible fade show" id="taskSuccessAlert" style="display: none;">
+                            <strong>Успех!</strong> <span id="taskSuccessText"></span>
+                        </div>
+                    </form>
+                </div>
+            
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" form="taskForm" class="btn btn-primary" id="taskSaveBtn">
+                        <i class="fas fa-save me-2"></i>Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 </body>
 </html>

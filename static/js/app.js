@@ -1,19 +1,37 @@
 
 import { AuthModal } from './components/AuthModal.js';
+import { TasksModal } from './components/TasksModal.js';
+
 import { AuthService } from './services/AuthService.js';
+
 
 class Program {
 
     constructor() {
         this.isInitialized = false;
         this.authModal = null;
+
         this.authService = new AuthService();
+        this.tasksModal = new TasksModal();
     }
 
      async initialize() {
+        try {
+            // Пытаемся автоматически войти
+
+            // const autoLoginResult = this.authService.tryAutoLogin();
+            // if (autoLoginResult.success) {
+            //     await this.onAuthSuccess(autoLoginResult.data);
+            // } else {
+            //     console.log('Auto-login failed:', autoLoginResult.error);
+            // }
+
             this.initializeUI();
             this.isInitialized = true;
             console.log('App initialized successfully');
+        } catch (error) {
+            console.error('App initialization failed:', error);
+        }
     }
 
     initializeUI() {
@@ -21,6 +39,7 @@ class Program {
             this.authService,
             (user) => this.onAuthSuccess(user)
         );
+        this.tasksModal.initialize();
         this.authModal.initialize();
         this.bindAuthButtons();
     }
@@ -33,6 +52,10 @@ class Program {
         
         document.getElementById('quit').addEventListener('click', () => {
             this.logout();
+        });
+
+        document.getElementById('uppdateTaskBtn').addEventListener('click', () => {
+            this.tasksModal.fetchData();
         });
     }
 
@@ -55,14 +78,15 @@ class Program {
         }
     }
 
-    updateUserInterface(user) {
+    async updateUserInterface(user) {
         const usernameDisplay = document.getElementById('usernameDisplay');
         if (usernameDisplay) {
             usernameDisplay.value = user.username;
         }
-        
         document.getElementById('quit').hidden = false;
         document.getElementById('regLog').hidden = true;
+
+        await this.tasksModal.fetchData();
     }
 }
 

@@ -14,11 +14,14 @@ body {
 /* Авторизация и регистрация */
 
 .auth-container{
-    position: absolute;
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
     z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
 }
 
 .btn-custom {
+    margin: 5px;
     padding: 12px 30px;
     border-radius: 20px;
     font-weight: 600;
@@ -48,4 +51,10 @@ body {
     transform: translateY(-50%);
     cursor: pointer;
     color: #6c757d;
+}
+
+/*Общие стили*/
+
+.textUI{
+    color: aliceblue;
 }
