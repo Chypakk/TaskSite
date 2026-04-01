@@ -21,7 +21,7 @@ class Program {
         try {
             
             // Пытаемся автоматически войти
-            const autoLoginResult = this.authService.tryAutoLogin();
+            const autoLoginResult =  await this.authService.tryAutoLogin();
             if (autoLoginResult.success) {
                 await this.onAuthSuccess(autoLoginResult.data);
             } else {
@@ -65,7 +65,7 @@ class Program {
 
 
     }
-      
+
     bindEvents() {
         // Глобальный слушатель для открытия задачи
         document.addEventListener('task:view', (e) => {
@@ -78,8 +78,8 @@ class Program {
         });
     }
 
-    logout() {
-        const result = this.authService.logout();
+    async logout() {
+        const result = await this.authService.logout();
         if (result.success) {
             document.getElementById('usernameDisplay').value = '';
             document.getElementById('quit').hidden = true;

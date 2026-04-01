@@ -77,9 +77,9 @@ export class AuthService {
     
     async tryAutoLogin() {
         try {
-            const storedUser = localStorage.getItem('token');
-            if (storedUser) {
-                const response = await this.apiService.post('/api/me', storedUser).json();
+            const token = this.apiService._getSessionToken();
+            if (token) {
+                const response = await this.apiService.post('/api/me', token);
                 if (response.ok){
                     const userData = await response.json();
                     this.currentUser = new User(userData);
