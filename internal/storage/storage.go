@@ -125,10 +125,17 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 		}
 
 		if createdAtStr.Valid {
-			task.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr.String)
+			task.CreatedAt, err = parseTime(createdAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse created_at: %w", err)
+			}
 		}
+
 		if completedAtStr.Valid {
-			task.CompletedAt, _ = time.Parse("2006-01-02 15:04:05", completedAtStr.String)
+			task.CompletedAt, err = parseTime(completedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
 		}
 
 		tasks = append(tasks, task)
@@ -156,10 +163,17 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	}
 
 	if createdAtStr.Valid {
-		task.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr.String)
+		task.CreatedAt, err = parseTime(createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse created_at: %w", err)
+		}
 	}
+
 	if completedAtStr.Valid {
-		task.CompletedAt, _ = time.Parse("2006-01-02 15:04:05", completedAtStr.String)
+		task.CompletedAt, err = parseTime(completedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse completed_at: %w", err)
+		}
 	}
 
 	return &task, nil
@@ -189,35 +203,34 @@ func (s *Storage) ClaimTask(taskId, userId int) error {
 
 func (s *Storage) CompleteTask(taskID, userID int) (any, error) {
 	row := s.db.QueryRow(
-        `SELECT id, user_id, name, description, author, status, created_at, completed_at 
+		`SELECT id, user_id, name, description, author, status, created_at, completed_at 
          FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
-        taskID, userID,
-    )
+		taskID, userID,
+	)
 
 	var task model.Task
-    var createdAtStr, completedAtStr sql.NullString
-    err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, 
-                    &task.Author, &task.Status, &createdAtStr, &completedAtStr)
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return nil, fmt.Errorf("task not found or forbidden")
-        }
-        return nil, err
-    }
+	var createdAtStr, completedAtStr sql.NullString
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
+		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("task not found or forbidden")
+		}
+		return nil, err
+	}
 
-    // Апдейтим статус и время
-    now := time.Now()
-    _, err = s.db.Exec(
-        "UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?",
-        now.Format("2006-01-02 15:04:05"), taskID,
-    )
-    if err != nil {
-        return nil, err
-    }
+	now := time.Now()
+	_, err = s.db.Exec(
+		"UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?",
+		now, taskID,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-    task.Status = "completed"
-    task.CompletedAt = now
-    return &task, nil
+	task.Status = "completed"
+	task.CompletedAt = now
+	return &task, nil
 }
 
 func (s *Storage) DeleteTask(id, userId int) error {
@@ -279,7 +292,7 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 	)
 
 	var user model.User
-	var createdAtStr string
+	var createdAtStr sql.NullString
 
 	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &createdAtStr)
 	if err != nil {
@@ -289,7 +302,14 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 		return nil, err
 	}
 
-	user.CreatedAt, _ = time.Parse("2006-01-02 15:04:05", createdAtStr)
+	user.CreatedAt, _ = parseTime(createdAtStr)
 
 	return &user, nil
+}
+
+func parseTime(nullStr sql.NullString) (time.Time, error) {
+	if !nullStr.Valid {
+		return time.Time{}, nil
+	}
+	return time.Parse(time.RFC3339, nullStr.String)
 }
