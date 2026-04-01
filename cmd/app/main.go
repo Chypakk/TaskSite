@@ -40,6 +40,7 @@ func main() {
 
 	http.HandleFunc("/api/register", userHandler.Register)
 	http.HandleFunc("/api/login", userHandler.Login)
+	http.HandleFunc("/api/me", userHandler.GetMe)
 	http.HandleFunc("/api/logout", sessionStore.AuthMiddleware(userHandler.Logout))
 
 	http.HandleFunc("/api/tasks", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
