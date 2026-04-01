@@ -30,8 +30,9 @@ export class TaskViewModal {
         // Кнопка редактировать
         document.getElementById('taskEditBtn').addEventListener('click', () => {
             this.bootstrapModal.hide();
+            const taskId = this.currentTaskId;
             setTimeout(() => {
-                this.taskForm.openEditMode(this.currentTaskId);
+                this.taskForm.openEditMode(taskId);
             }, 300); // Небольшая задержка для плавности
         });
         
@@ -55,7 +56,7 @@ export class TaskViewModal {
         this.setLoading(true);
         
         try {
-            const task = await this.apiService.get(`/api/tasks/${taskId}`);
+            const task = await(await this.apiService.get(`/api/tasks/${taskId}`)).json();
             this.renderTask(task);
             this.bootstrapModal.show();
         } catch (error) {
@@ -71,7 +72,7 @@ export class TaskViewModal {
         document.getElementById('viewTaskId').textContent = task.id;
         
         // Наименование
-        document.getElementById('viewTaskTitle').textContent = task.title;
+        document.getElementById('viewTaskTitle').textContent = task.name;
         
         // Статус с бейджем
         const statusBadge = document.getElementById('viewTaskStatus');
@@ -90,9 +91,8 @@ export class TaskViewModal {
         document.getElementById('viewTaskAuthor').textContent = task.author;
         
         // Даты
-        document.getElementById('viewTaskCreatedAt').textContent = this.formatDate(task.createdAt);
-        document.getElementById('viewTaskUpdatedAt').textContent = task.updatedAt ? 
-            this.formatDate(task.updatedAt) : '—';
+        document.getElementById('viewTaskCreatedAt').textContent = this.formatDate(task.created_at);
+        document.getElementById('viewTaskUpdatedAt').textContent = this.formatDate(task.completed_at);
     }
     
     // Удаление задачи
