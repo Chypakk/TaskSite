@@ -31,35 +31,35 @@ export class ApiService {
     }
     
     async get(endpoint, data) {
-        return this.request(endpoint, {
+        return await this.request(endpoint, {
             method: 'GET',
             body: data
         });
     }
     
     async post(endpoint, data) {
-        return this.request(endpoint, {
+        return await this.request(endpoint, {
             method: 'POST',
             body: data
         });
     }
     
     async put(endpoint, data) {
-        return this.request(endpoint, {
+        return await this.request(endpoint, {
             method: 'PUT',
             body: data
         });
     }    
     
     async patch(endpoint, data) {
-        return this.request(endpoint, {
+        return await this.request(endpoint, {
             method: 'PATCH',
             body: data
         });
     }
     
     async delete(endpoint) {
-        return this.request(endpoint, {
+        return await this.request(endpoint, {
             method: 'DELETE'
         });
     }
