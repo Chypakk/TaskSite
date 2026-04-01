@@ -8,16 +8,6 @@ export class TasksService {
     async getAllTasks() {
         //await new Promise(resolve => setTimeout(resolve, 800));
 
-        return [
-            {
-                id: 1,
-                name: "Тест",
-                description: "Большой текст для проверки а куда он вообще его запишет",
-                author: "",
-                status: "open"
-            }
-        ];
-
         const response = await this.apiService.get('/api/tasks', null);
         return await response.json();
     }
