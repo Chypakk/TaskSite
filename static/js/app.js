@@ -19,7 +19,6 @@ class Program {
 
      async initialize() {
         try {
-            
             // Пытаемся автоматически войти
             const autoLoginResult =  await this.authService.tryAutoLogin();
             if (autoLoginResult.success) {
@@ -74,7 +73,7 @@ class Program {
 
         // Обновление таблицы после удаления
         document.addEventListener('task:deleted', () => {
-            this.taskTable.loadTasks();
+            this.tasksModal.fetchData();
         });
     }
 

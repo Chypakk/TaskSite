@@ -88,7 +88,7 @@ export class TasksModal{
             
             // Заполняем форму
             document.getElementById('taskId').value = task.id;
-            document.getElementById('taskName').value = task.title;
+            document.getElementById('taskName').value = task.name;
             document.getElementById('taskDescription').value = task.description;
             document.getElementById('taskAuthor').value = task.author;
             document.getElementById('taskStatus').value = task.status;
@@ -136,9 +136,9 @@ export class TasksModal{
         try {
             // Определяем метод и URL
             if (this.isEditMode) {
-                // const taskId = document.getElementById('taskId').value;
-                // await this.apiService.put(`/api/tasks/${taskId}`, formData);
-                // this.showSuccess('Заявка обновлена!');
+                const taskId = document.getElementById('taskId').value;
+                await this.apiService.put(`/api/tasks/${taskId}`, formData);
+                this.showSuccess('Заявка обновлена!');
             } else {
                 await this.tasksService.createTask(formData);
                 this.showSuccess('Заявка создана!');

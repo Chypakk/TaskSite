@@ -6,8 +6,6 @@ export class TasksService {
         this.apiService = new ApiService();
     }
     async getAllTasks() {
-        //await new Promise(resolve => setTimeout(resolve, 800));
-
         const response = await this.apiService.get('/api/tasks', null);
         return await response.json();
     }
@@ -18,7 +16,7 @@ export class TasksService {
     }
     
     async getTask(taskId) {
-        const response = await this.apiService.get('/api/task', taskId);
+        const response = await this.apiService.get(`/api/tasks/${taskId}`, null);
         return await response.json();
     }
 
