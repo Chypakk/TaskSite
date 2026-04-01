@@ -123,7 +123,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -140,13 +140,21 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	_, err := h.storage.GetUserByUsername(username)
+	user, err := h.storage.GetUserByUsername(username)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return
 	}
 
+	// w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(model.LoginResponse{
+		Message:  "Login successful",
+		Token:    token,
+		Username: user.Username,
+		ID:       user.ID,
+	})
 
 }
 
@@ -158,7 +166,7 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	token := r.Header.Get("X-Session-Token")
 	h.sessionStore.DeleteSession(token)
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserHandler) GetSessionStore() *SessionStore {

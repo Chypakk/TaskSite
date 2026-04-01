@@ -94,6 +94,29 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tasks)
 }
 
+func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
+	id, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.storage.GetTaskByID(id);
+	if err != nil {
+		http.Error(w, "Failed to get task", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
