@@ -137,7 +137,7 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 	return tasks, nil
 }
 
-func (s *Storage) GetTaskByID(taskID int) (*model.Task, error){
+func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	row := s.db.QueryRow(
 		"SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
@@ -162,10 +162,10 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error){
 		task.CompletedAt, _ = time.Parse("2006-01-02 15:04:05", completedAtStr.String)
 	}
 
-	return  &task, nil
+	return &task, nil
 }
 
-func (s *Storage) ClaimTask(taskId, userId int) error{
+func (s *Storage) ClaimTask(taskId, userId int) error {
 	result, err := s.db.Exec(
 		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status = 'pool'",
 		userId, taskId,
@@ -185,6 +185,39 @@ func (s *Storage) ClaimTask(taskId, userId int) error{
 	}
 
 	return nil
+}
+
+func (s *Storage) CompleteTask(taskID, userID int) (any, error) {
+	row := s.db.QueryRow(
+        `SELECT id, user_id, name, description, author, status, created_at, completed_at 
+         FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+        taskID, userID,
+    )
+
+	var task model.Task
+    var createdAtStr, completedAtStr sql.NullString
+    err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, 
+                    &task.Author, &task.Status, &createdAtStr, &completedAtStr)
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, fmt.Errorf("task not found or forbidden")
+        }
+        return nil, err
+    }
+
+    // Апдейтим статус и время
+    now := time.Now()
+    _, err = s.db.Exec(
+        "UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?",
+        now.Format("2006-01-02 15:04:05"), taskID,
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    task.Status = "completed"
+    task.CompletedAt = now
+    return &task, nil
 }
 
 func (s *Storage) DeleteTask(id, userId int) error {
