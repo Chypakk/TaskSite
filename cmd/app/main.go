@@ -66,10 +66,16 @@ func main() {
 			return
 		}
 
-		if r.Method == http.MethodDelete {
+		switch r.Method {
+		case http.MethodGet:
+			taskHandler.GetTaskById(w, r)
+			return
+		case http.MethodDelete:
 			taskHandler.DeleteTask(w, r)
-		} else {
+			return
+		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
 		}
 	}))
 

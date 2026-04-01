@@ -153,7 +153,7 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	var task model.Task
 	var createdAtStr, completedAtStr sql.NullString
 
-	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &createdAtStr, &completedAtStr)
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &completedAtStr)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
