@@ -234,18 +234,28 @@ export class TasksModal{
         
         data.forEach(item => {
             const row = document.createElement('tr');
-            
+            row.setAttribute('data-task-id', item.id);
             // Формирование ячеек с применением классов для стилизации
             row.innerHTML = `
                 <td>${item.id}</td>
                 <td>${item.name}</td>
-                <td>${item.description}</td>
                 <td>${item.author}</td>
                 <td class="highlight">${item.status}</td>
                 <td>${item.user_id}</td>
                 <td>${item.created_at}</td>
                 <td>${item.completed_at}</td>
             `;
+            // Клик по строке
+            row.addEventListener('click', (e) => {
+                // Игнорируем клик по кнопкам действий (если они есть)
+                if (e.target.closest('.btn')) return;
+                
+                // Генерируем событие или сразу открываем
+                document.dispatchEvent(new CustomEvent('task:view', { 
+                    detail: { taskId: item.id } 
+                }));
+            });
+            
             tbody.appendChild(row);
         });
     }

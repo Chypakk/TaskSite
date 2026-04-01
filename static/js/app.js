@@ -1,6 +1,7 @@
 
 import { AuthModal } from './components/AuthModal.js';
 import { TasksModal } from './components/TasksModal.js';
+import { TaskViewModal } from './components/TaskViewModal.js';
 
 import { AuthService } from './services/AuthService.js';
 
@@ -13,18 +14,19 @@ class Program {
 
         this.authService = new AuthService();
         this.tasksModal = new TasksModal();
+        this.taskViewModal = null;
     }
 
      async initialize() {
         try {
+            
             // Пытаемся автоматически войти
-
-            // const autoLoginResult = this.authService.tryAutoLogin();
-            // if (autoLoginResult.success) {
-            //     await this.onAuthSuccess(autoLoginResult.data);
-            // } else {
-            //     console.log('Auto-login failed:', autoLoginResult.error);
-            // }
+            const autoLoginResult = this.authService.tryAutoLogin();
+            if (autoLoginResult.success) {
+                await this.onAuthSuccess(autoLoginResult.data);
+            } else {
+                console.log('Auto-login failed:', autoLoginResult.error);
+            }
 
             this.initializeUI();
             this.isInitialized = true;
@@ -39,13 +41,16 @@ class Program {
             this.authService,
             (user) => this.onAuthSuccess(user)
         );
-        this.tasksModal.initialize();
         this.authModal.initialize();
-        this.bindAuthButtons();
+        this.tasksModal.initialize();
+        this.taskViewModal = new TaskViewModal(this.tasksModal);
+        this.taskViewModal.initialize();
+        this.bindButtons();
+        this.bindEvents();
     }
 
-    //Привязываем 
-    bindAuthButtons() {
+    //Привязываем действия к кнопкам 
+    bindButtons() {
         document.getElementById('regLog').addEventListener('click', () => {
             this.authModal.show();
         });
@@ -56,6 +61,20 @@ class Program {
 
         document.getElementById('uppdateTaskBtn').addEventListener('click', () => {
             this.tasksModal.fetchData();
+        });
+
+
+    }
+      
+    bindEvents() {
+        // Глобальный слушатель для открытия задачи
+        document.addEventListener('task:view', (e) => {
+            this.taskViewModal.showTask(e.detail.taskId);
+        });
+
+        // Обновление таблицы после удаления
+        document.addEventListener('task:deleted', () => {
+            this.taskTable.loadTasks();
         });
     }
 

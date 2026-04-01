@@ -59,7 +59,6 @@
                         <tr>
                             <th scope="col">№</th>
                             <th scope="col">Название</th>
-                            <th scope="col">Описание</th>
                             <th scope="col">Автор</th>
                             <th scope="col">Статус</th>
                             <th scope="col">Взята в работу</th>
@@ -244,6 +243,88 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" form="taskForm" class="btn btn-primary" id="taskSaveBtn">
                         <i class="fas fa-save me-2"></i>Сохранить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Модальное окно просмотра задачи -->
+    <div class="modal fade" tabindex="-1" id="taskViewModal" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                
+                <!-- Заголовок -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskViewTitle">
+                        <i class="fas fa-tasks me-2"></i>
+                        Заявка #<span id="viewTaskId"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                
+                <!-- Тело с информацией -->
+                <div class="modal-body">
+                    <!-- Карточка с основной информацией -->
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Наименование</label>
+                            <h6 id="viewTaskTitle" class="mb-0"></h6>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="text-muted small">Статус</label>
+                            <div>
+                                <span class="badge" id="viewTaskStatus"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="text-muted small">Приоритет</label>
+                            <div>
+                                <span class="badge" id="viewTaskPriority"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Описание -->
+                    <div class="mb-4">
+                        <label class="text-muted small d-block">Описание</label>
+                        <div class="border rounded p-3 bg-light" id="viewTaskDescription" 
+                            style="white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    
+                    <!-- Дополнительная информация -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Автор</label>
+                            <div id="viewTaskAuthor"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Дата создания</label>
+                            <div id="viewTaskCreatedAt"></div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Последнее обновление</label>
+                            <div id="viewTaskUpdatedAt"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Блок ошибок -->
+                    <div class="alert alert-danger alert-dismissible fade show" id="viewTaskError" style="display: none;">
+                        <strong>Ошибка!</strong> <span id="viewTaskErrorText"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+                
+                <!-- Футер с кнопками -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-danger" id="taskDeleteBtn">
+                        <i class="fas fa-trash me-2"></i>Удалить
+                    </button>
+                    <button type="button" class="btn btn-primary" id="taskEditBtn">
+                        <i class="fas fa-edit me-2"></i>Редактировать
                     </button>
                 </div>
             </div>
