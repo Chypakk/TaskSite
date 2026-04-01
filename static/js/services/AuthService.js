@@ -16,10 +16,12 @@ export class AuthService {
                 return AuthResult.failure(validationError);
             }
 
-            const userData = await this.apiService.post('/api/login', {
+            const response = await this.apiService.post('/api/login', {
                 username, 
                 password 
             });
+            
+            const userData = await response.json();
 
             this.currentUser = new User(userData);
             this.saveToStorage();
@@ -39,13 +41,13 @@ export class AuthService {
             if (validationError) {
                 return AuthResult.failure(validationError);
             }
-            
-            // Используем ApiService
-            const userData = await this.apiService.post('/api/register', {
+
+            const response = await this.apiService.post('/api/register', {
                 username, 
                 password 
-            }).json();
-            
+            });
+
+            const userData = await response.json();
             this.currentUser = new User(userData);
             this.saveToStorage();
             
@@ -77,9 +79,9 @@ export class AuthService {
         try {
             const storedUser = localStorage.getItem('token');
             if (storedUser) {
-                const response = await this.apiService.post('/api/logout', storedUser).json();
+                const response = await this.apiService.post('/api/me', storedUser).json();
                 if (response.ok){
-                    const userData = JSON.parse(storedUser);
+                    const userData = await response.json();
                     this.currentUser = new User(userData);
 
                     return AuthResult.success(this.currentUser);
