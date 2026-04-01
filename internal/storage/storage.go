@@ -120,7 +120,7 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 		var task model.Task
 		var createdAtStr, completedAtStr sql.NullString
 
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &createdAtStr, &completedAtStr); err != nil {
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &completedAtStr); err != nil {
 			return nil, err
 		}
 
