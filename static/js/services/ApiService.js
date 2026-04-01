@@ -11,13 +11,18 @@ export class ApiService {
             },
             ...options
         };
-        
+        const token = this._getSessionToken();
+
+        if (token) {
+            config.headers['X-Session-Token'] = token;
+        }
+
         if (config.body && typeof config.body === 'object') {
             config.body = JSON.stringify(config.body);
         }
         
         const response = await fetch(url, config);
-        
+
         if (!response.ok) {
             throw new ApiError(response.status, response.statusText);
         }
@@ -31,8 +36,11 @@ export class ApiService {
         return await response.text();
     }
     
-    async get(endpoint) {
-        return this.request(endpoint);
+    async get(endpoint, data) {
+        return this.request(endpoint, {
+            method: 'GET',
+            body: data
+        });
     }
     
     async post(endpoint, data) {
@@ -47,6 +55,13 @@ export class ApiService {
             method: 'PUT',
             body: data
         });
+    }    
+    
+    async patch(endpoint, data) {
+        return this.request(endpoint, {
+            method: 'PATCH',
+            body: data
+        });
     }
     
     async delete(endpoint) {
@@ -54,6 +69,11 @@ export class ApiService {
             method: 'DELETE'
         });
     }
+
+    _getSessionToken() {
+        return localStorage.getItem('token');
+    }
+
 }
 
 class ApiError extends Error {
