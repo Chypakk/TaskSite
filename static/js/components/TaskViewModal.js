@@ -1,4 +1,5 @@
 import { ApiService } from '../services/ApiService.js';
+import * as FormatService from '../services/FormatService.js';
 
 export class TaskViewModal {
     constructor(taskForm) {
@@ -40,7 +41,12 @@ export class TaskViewModal {
         document.getElementById('taskDeleteBtn').addEventListener('click', () => {
             this.handleDelete();
         });
-        
+                
+        // Кнопка завершить
+        document.getElementById('taskEndBtn').addEventListener('click', () => {
+            this.handleComplete();
+        });
+
         // Очистка при закрытии
         this.modalElement.addEventListener('hidden.bs.modal', () => {
             this.currentTaskId = null;
@@ -57,6 +63,18 @@ export class TaskViewModal {
         
         try {
             const task = await(await this.apiService.get(`/api/tasks/${taskId}`)).json();
+            // const task =             {
+            //     id: 1,
+            //     name: "1234",
+            //     author: "Иван",
+            //     status: "closed",
+            //     description: "Очень тестовая задача",
+            //     user_id: 1,
+            //     created_at: "2026-04-02T05:05:05Z",
+            //     updated_at: "0001-01-01T00:00:00Z",
+            //     completed_at: "",
+            // };
+            
             this.renderTask(task);
             this.bootstrapModal.show();
         } catch (error) {
@@ -76,13 +94,13 @@ export class TaskViewModal {
         
         // Статус с бейджем
         const statusBadge = document.getElementById('viewTaskStatus');
-        statusBadge.textContent = this.getStatusText(task.status);
-        statusBadge.className = `badge bg-${this.getStatusColor(task.status)}`;
+        statusBadge.textContent = FormatService.getStatusText(task.status);
+        statusBadge.className = `badge bg-${FormatService.getStatusColor(task.status)}`;
         
         // Приоритет с бейджем
         const priorityBadge = document.getElementById('viewTaskPriority');
-        priorityBadge.textContent = this.getPriorityText(task.priority);
-        priorityBadge.className = `badge bg-${this.getPriorityColor(task.priority)}`;
+        priorityBadge.textContent = FormatService.getPriorityText(task.priority);
+        priorityBadge.className = `badge bg-${FormatService.getPriorityColor(task.priority)}`;
         
         // Описание (с сохранением переносов строк)
         document.getElementById('viewTaskDescription').textContent = task.description || 'Нет описания';
@@ -91,8 +109,8 @@ export class TaskViewModal {
         document.getElementById('viewTaskAuthor').textContent = task.author;
         
         // Даты
-        document.getElementById('viewTaskCreatedAt').textContent = this.formatDate(task.created_at);
-        document.getElementById('viewTaskUpdatedAt').textContent = this.formatDate(task.completed_at);
+        document.getElementById('viewTaskCreatedAt').textContent = FormatService.formatDate(task.created_at);
+        document.getElementById('viewTaskUpdatedAt').textContent = FormatService.formatDate(task.updated_at);
     }
     
     // Удаление задачи
@@ -117,59 +135,27 @@ export class TaskViewModal {
         }
     }
     
-    // Вспомогательные методы
-    getStatusText(status) {
-        const statuses = {
-            'open': 'Открыта',
-            'in_progress': 'В работе',
-            'resolved': 'Завершена',
-            'closed': 'Закрыта'
-        };
-        return statuses[status] || status;
+       // Удаление задачи
+    async handleComplete() {
+        if (!confirm('Вы уверены, что хотите завершить заявку #' + this.currentTaskId + '?')) {
+            return;
+        }
+        
+        try {
+            await this.apiService.post(`/api/tasks/${this.currentTaskId}/complete`);
+            
+            this.bootstrapModal.hide();
+            
+            alert('Заявка успешно завершена');
+            
+            // Событие для обновления таблицы
+            document.dispatchEvent(new CustomEvent('task:saved'));
+            
+        } catch (error) {
+            this.showError('Не удалось завершить задачу: ' + error.message);
+        }
     }
-    
-    getStatusColor(status) {
-        const colors = {
-            'open': 'warning',
-            'in_progress': 'info',
-            'resolved': 'success',
-            'closed': 'secondary'
-        };
-        return colors[status] || 'secondary';
-    }
-    
-    getPriorityText(priority) {
-        const priorities = {
-            'low': 'Низкий',
-            'medium': 'Средний',
-            'high': 'Высокий',
-            'critical': 'Критический'
-        };
-        return priorities[priority] || priority;
-    }
-    
-    getPriorityColor(priority) {
-        const colors = {
-            'low': 'secondary',
-            'medium': 'primary',
-            'high': 'warning',
-            'critical': 'danger'
-        };
-        return colors[priority] || 'secondary';
-    }
-    
-    formatDate(dateString) {
-        if (!dateString) return '—';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ru-RU', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    }
-    
+
     showError(message) {
         document.getElementById('viewTaskErrorText').textContent = message;
         document.getElementById('viewTaskError').style.display = 'block';
