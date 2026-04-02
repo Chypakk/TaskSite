@@ -57,6 +57,11 @@ export class TasksModal{
         if (createBtn) {
             createBtn.addEventListener('click', () => this.openCreateMode());
         }
+
+        // В классе TaskTable добавь слушатель:
+        document.addEventListener('task:saved', () => {
+            this.fetchData(); // Перезагружаем таблицу
+        });
     }
 
     // Открытие в режиме создания
@@ -137,8 +142,15 @@ export class TasksModal{
             // Определяем метод и URL
             if (this.isEditMode) {
                 const taskId = document.getElementById('taskId').value;
-                await this.apiService.put(`/api/tasks/${taskId}`, formData);
-                this.showSuccess('Заявка обновлена!');
+                const response = await this.tasksService.updateTask(taskId,formData);
+                if(response.ok){
+                    this.showSuccess('Заявка обновлена!');
+                }
+                else{
+                    this.showError(error.message || 'Ошибка при сохранении');
+                    this.setLoading(false);
+                    return;
+                }
             } else {
                 await this.tasksService.createTask(formData);
                 this.showSuccess('Заявка создана!');

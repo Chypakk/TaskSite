@@ -20,5 +20,8 @@ export class TasksService {
         return await response.json();
     }
 
-
+    async updateTask(taskId, formData) {
+        const response = await this.apiService.put(`/api/tasks/${taskId}`, formData);
+        return await response;
+    }
 }
