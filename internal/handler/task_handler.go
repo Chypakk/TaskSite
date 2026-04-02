@@ -107,7 +107,7 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.GetTaskByID(id);
+	task, err := h.storage.GetTaskByID(id)
 	if err != nil {
 		http.Error(w, "Failed to get task", http.StatusInternalServerError)
 		return
@@ -131,16 +131,16 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username, ok := r.Context().Value("username").(string)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	user, err := h.storage.GetUserByUsername(username)
-    if err != nil {
-        http.Error(w, "User not found", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		http.Error(w, "User not found", http.StatusInternalServerError)
+		return
+	}
 
 	if err := h.storage.DeleteTask(id, user.ID); err != nil {
 		http.Error(w, "Failed to delete task", http.StatusNotFound)
@@ -152,79 +152,128 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
 	username, ok := r.Context().Value("username").(string)
-    if !ok {
-        http.Error(w, "Unauthorized", http.StatusUnauthorized)
-        return
-    }
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	user, err := h.storage.GetUserByUsername(username)
-    if err != nil {
-        http.Error(w, "User not found", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		http.Error(w, "User not found", http.StatusInternalServerError)
+		return
+	}
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-    path = strings.TrimSuffix(path, "/claim")
-    taskID, err := strconv.Atoi(path)
-    if err != nil {
-        http.Error(w, "Invalid task ID", http.StatusBadRequest)
-        return
-    }
+	path = strings.TrimSuffix(path, "/claim")
+	taskID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
 
-    if err := h.storage.ClaimTask(taskID, user.ID); err != nil {
-        if strings.Contains(err.Error(), "already claimed") {
-            http.Error(w, "Task already claimed", http.StatusConflict)
-            return
-        }
-        http.Error(w, "Failed to claim task", http.StatusInternalServerError)
-        return
-    }
+	if err := h.storage.ClaimTask(taskID, user.ID); err != nil {
+		if strings.Contains(err.Error(), "already claimed") {
+			http.Error(w, "Task already claimed", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Failed to claim task", http.StatusInternalServerError)
+		return
+	}
 
-    task, err := h.storage.GetTaskByID(taskID)
-    if err != nil {
-        http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
-        return
-    }
-    
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(task)
+	task, err := h.storage.GetTaskByID(taskID)
+	if err != nil {
+		http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(task)
 }
 
 func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-    path = strings.TrimSuffix(path, "/complete")
-    taskID, err := strconv.Atoi(path)
-    if err != nil {
-        http.Error(w, "Invalid task ID", http.StatusBadRequest)
-        return
-    }
+	path = strings.TrimSuffix(path, "/complete")
+	taskID, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
 
 	username := r.Context().Value("username").(string)
-    user, err := h.storage.GetUserByUsername(username)
-    if err != nil {
-        http.Error(w, "User not found", http.StatusInternalServerError)
-        return
-    }
+	user, err := h.storage.GetUserByUsername(username)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusInternalServerError)
+		return
+	}
 
 	task, err := h.storage.CompleteTask(taskID, user.ID)
-    if err != nil {
-        if strings.Contains(err.Error(), "not found") {
-            http.Error(w, "Task not found", http.StatusNotFound)
-            return
-        }
-        if strings.Contains(err.Error(), "forbidden") {
-            http.Error(w, "You can only complete tasks assigned to you", http.StatusForbidden)
-            return
-        }
-        http.Error(w, "Failed to complete task", http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		}
+		if strings.Contains(err.Error(), "forbidden") {
+			http.Error(w, "You can only complete tasks assigned to you", http.StatusForbidden)
+			return
+		}
+		http.Error(w, "Failed to complete task", http.StatusInternalServerError)
+		return
+	}
 
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(task)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(task)
+}
+
+func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
+	id, err := strconv.Atoi(path)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	username := r.Context().Value("username").(string)
+	user, err := h.storage.GetUserByUsername(username)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusInternalServerError)
+		return
+	}
+
+	var req model.UpdateTaskRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.storage.UpdateTask(id, req, user.ID)
+	if err != nil {
+		if strings.Contains(err.Error(), "access denied") {
+			http.Error(w, "You can't edit this task", http.StatusForbidden)
+			return
+		}
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to update task", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(task)
+
 }

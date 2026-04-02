@@ -75,7 +75,7 @@ func runMigrations(db *sql.DB) error {
 
 func (s *Storage) CreateTask(name, description, author string) (*model.Task, error) {
 	result, err := s.db.Exec(
-		"INSERT INTO tasks (name, description, author, status) VALUES (?, ?, ?, 'pool')",
+		"INSERT INTO tasks (name, description, author, status) VALUES (?, ?, ?, 'open')",
 		name,
 		description,
 		author,
@@ -93,7 +93,7 @@ func (s *Storage) CreateTask(name, description, author string) (*model.Task, err
 		ID:          int(id),
 		Name:        name,
 		Author:      author,
-		Status:      "pool",
+		Status:      "open",
 		CreatedAt:   time.Now(),
 		Description: description,
 	}, nil
@@ -181,7 +181,7 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 
 func (s *Storage) ClaimTask(taskId, userId int) error {
 	result, err := s.db.Exec(
-		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status = 'pool'",
+		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status = 'open'",
 		userId, taskId,
 	)
 
@@ -249,6 +249,69 @@ func (s *Storage) DeleteTask(id, userId int) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID int) (*model.Task, error) {
+	var task model.Task
+	var createdAtStr, completedAtStr sql.NullString
+	err := s.db.QueryRow(
+		"SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE id = ?",
+		taskID,
+	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
+		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
+
+	if err != nil {
+		return nil, fmt.Errorf("task not found")
+	}
+
+	if task.UserID != nil && *task.UserID != editorID {
+		return nil, fmt.Errorf("access denied")
+	}
+
+	updates := []string{}
+	args := []any{}
+
+	if req.Name != "" {
+		updates = append(updates, "name = ?")
+		args = append(args, strings.TrimSpace(req.Name))
+	}
+	if req.Description != "" {
+		updates = append(updates, "description = ?")
+		args = append(args, req.Description)
+	}
+	if req.Author != "" {
+		updates = append(updates, "author = ?")
+		args = append(args, req.Author)
+	}
+	if req.Status != "" {
+		valid := map[string]bool{"open": true, "in_progress": true, "completed": true, "closed": true}
+		if !valid[req.Status] {
+			return nil, fmt.Errorf("invalid status value")
+		}
+		updates = append(updates, "status = ?")
+		args = append(args, req.Status)
+
+		// Авто-заполнение completed_at при смене статуса
+		if req.Status == "completed" {
+			updates = append(updates, "completed_at = ?")
+			args = append(args, time.Now().Format("2006-01-02 15:04:05"))
+		}
+	}
+
+	if len(updates) == 0 {
+		return &task, nil // Нечего обновлять
+	}
+
+	args = append(args, taskID)
+	//
+	query := fmt.Sprintf("UPDATE tasks SET %s, updated_at = CURRENT_TIMESTAMP WHERE id = ?", strings.Join(updates, ", "))
+
+	_, err = s.db.Exec(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetTaskByID(taskID)
 }
 
 // Close закрывает подключение к БД

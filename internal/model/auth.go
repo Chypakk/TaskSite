@@ -26,3 +26,10 @@ type CreateTaskRequest struct {
 	Description string `json:"description" example:"Описание"`
 	Author      string `json:"author" example:"Пользователь1"`
 }
+
+type UpdateTaskRequest struct {
+	Name        string `json:"name,omitempty" example:"Задача 1"`
+	Description string `json:"description,omitempty" example:"Описание"`
+	Author      string `json:"author,omitempty" example:"Пользователь1"`
+	Status      string `json:"status,omitempty" example:"open"`
+}

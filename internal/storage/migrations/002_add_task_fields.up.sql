@@ -1,7 +1,8 @@
 ALTER TABLE tasks ADD COLUMN description TEXT DEFAULT '';
 ALTER TABLE tasks ADD COLUMN author TEXT NOT NULL DEFAULT 'Unknown';
-ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'pool';
+ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'open';
 ALTER TABLE tasks ADD COLUMN user_id INTEGER REFERENCES users(id);
+ALTER TABLE tasks ADD COLUMN updated_at DATETIME;
 ALTER TABLE tasks ADD COLUMN completed_at DATETIME;
 
 CREATE INDEX idx_tasks_status ON tasks(status);
