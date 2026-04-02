@@ -214,7 +214,7 @@ func (s *Storage) ClaimTask(taskId, userId int) error {
 	return nil
 }
 
-func (s *Storage) CompleteTask(taskID, userID int) (any, error) {
+func (s *Storage) CompleteTask(taskID, userID int) (*model.Task, error) {
 	row := s.db.QueryRow(
 		`SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at 
          FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
