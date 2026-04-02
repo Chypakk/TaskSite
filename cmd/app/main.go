@@ -35,7 +35,7 @@ func main() {
 
 	taskHandler := handler.NewTaskHandler(storage)
 	userHandler := handler.NewUserHandler(storage)
-	
+
 	sessionStore := userHandler.GetSessionStore()
 
 	http.HandleFunc("/api/register", userHandler.Register)
@@ -73,6 +73,8 @@ func main() {
 		case http.MethodDelete:
 			taskHandler.DeleteTask(w, r)
 			return
+		case http.MethodPut:
+			taskHandler.UpdateTask(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
