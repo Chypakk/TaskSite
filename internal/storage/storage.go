@@ -100,7 +100,7 @@ func (s *Storage) CreateTask(name, description, author string) (*model.Task, err
 }
 
 func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
-	query := "SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE 1=1"
+	query := "SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE 1=1"
 	var args []any
 
 	if statusFilter != nil {
@@ -118,9 +118,9 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 	tasks := make([]model.Task, 0)
 	for rows.Next() {
 		var task model.Task
-		var createdAtStr, completedAtStr sql.NullString
+		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &completedAtStr); err != nil {
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
 			return nil, err
 		}
 
@@ -138,6 +138,13 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 			}
 		}
 
+		if updatedAtStr.Valid {
+			task.UpdatedAt, err = parseTime(updatedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
+		}
+
 		tasks = append(tasks, task)
 	}
 
@@ -146,14 +153,14 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 
 func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	row := s.db.QueryRow(
-		"SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE id = ?",
+		"SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
 	)
 
 	var task model.Task
-	var createdAtStr, completedAtStr sql.NullString
+	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 
-	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &completedAtStr)
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -171,6 +178,12 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 
 	if completedAtStr.Valid {
 		task.CompletedAt, err = parseTime(completedAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse completed_at: %w", err)
+		}
+	}
+	if updatedAtStr.Valid {
+		task.UpdatedAt, err = parseTime(updatedAtStr)
 		if err != nil {
 			return nil, fmt.Errorf("parse completed_at: %w", err)
 		}
@@ -203,15 +216,15 @@ func (s *Storage) ClaimTask(taskId, userId int) error {
 
 func (s *Storage) CompleteTask(taskID, userID int) (any, error) {
 	row := s.db.QueryRow(
-		`SELECT id, user_id, name, description, author, status, created_at, completed_at 
+		`SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at 
          FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
 		taskID, userID,
 	)
 
 	var task model.Task
-	var createdAtStr, completedAtStr sql.NullString
+	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
-		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
+		&task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("task not found or forbidden")
@@ -294,7 +307,7 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 		// Авто-заполнение completed_at при смене статуса
 		if req.Status == "completed" {
 			updates = append(updates, "completed_at = ?")
-			args = append(args, time.Now().Format("2006-01-02 15:04:05"))
+			args = append(args, time.Now())
 		}
 	}
 
@@ -303,7 +316,7 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 	}
 
 	args = append(args, taskID)
-	//
+	
 	query := fmt.Sprintf("UPDATE tasks SET %s, updated_at = CURRENT_TIMESTAMP WHERE id = ?", strings.Join(updates, ", "))
 
 	_, err = s.db.Exec(query, args...)
