@@ -1,4 +1,5 @@
 import { TasksService } from '../services/TasksService.js';
+import * as FormatService from '../services/FormatService.js';
 
 export class TasksModal{
 
@@ -74,7 +75,9 @@ export class TasksModal{
             '<i class="fas fa-file-alt me-2"></i>Новая заявка';
         
         // Статус по умолчанию
-        document.getElementById('taskStatus').value = 'open';
+        const statusAttr = document.getElementById('taskStatus');
+        statusAttr.value = 'open';
+        statusAttr.disabled = true;
         
         this.bootstrapModal.show();
     }
@@ -90,13 +93,27 @@ export class TasksModal{
         try {
             // Загружаем данные задачи
             const task = await this.tasksService.getTask(taskId);
-            
+            // const task =             {
+            //     id: 1,
+            //     name: "1234",
+            //     author: "Иван",
+            //     status: "closed",
+            //     description: "Очень тестовая задача",
+            //     user_id: 1,
+            //     created_at: "2026-04-02T05:05:05Z",
+            //     updated_at: "0001-01-01T00:00:00Z",
+            //     completed_at: "",
+            // };
+
             // Заполняем форму
             document.getElementById('taskId').value = task.id;
             document.getElementById('taskName').value = task.name;
             document.getElementById('taskDescription').value = task.description;
             document.getElementById('taskAuthor').value = task.author;
-            document.getElementById('taskStatus').value = task.status;
+
+            const statusAttr = document.getElementById('taskStatus');
+            statusAttr.value = task.status;
+            statusAttr.disabled = false;
             
             // Заголовок
             document.getElementById('taskModalTitle').innerHTML = 
@@ -252,10 +269,11 @@ export class TasksModal{
                 <td>${item.id}</td>
                 <td>${item.name}</td>
                 <td>${item.author}</td>
-                <td class="highlight">${item.status}</td>
+                <td class="highlight">${FormatService.getStatusText(item.status)}</td>
                 <td>${item.user_id}</td>
-                <td>${item.created_at}</td>
-                <td>${item.completed_at}</td>
+                <td>${FormatService.formatDate(item.created_at)}</td>
+                <td>${FormatService.formatDate(item.updated_at)}</td>
+                <td>${FormatService.formatDate(item.completed_at)}</td>
             `;
             // Клик по строке
             row.addEventListener('click', (e) => {
@@ -271,5 +289,6 @@ export class TasksModal{
             tbody.appendChild(row);
         });
     }
+
 }
 

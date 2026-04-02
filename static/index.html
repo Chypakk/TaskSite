@@ -47,7 +47,8 @@
                         <option value="">Все статусы</option>
                         <option value="open">Открытые</option>
                         <option value="in_progress">В работе</option>
-                        <option value="resolved">Завершённые</option>
+                        <option value="completed">Выполненые</option>
+                        <option value="closed">Отмененные</option>
                     </select>
                 </div>
             </div>
@@ -63,6 +64,7 @@
                             <th scope="col">Статус</th>
                             <th scope="col">Взята в работу</th>
                             <th scope="col">Дата создания</th>
+                            <th scope="col">Дата изменения</th>
                             <th scope="col">Завершена</th>
                         </tr>
                     </thead>
@@ -175,6 +177,7 @@
         </div>
     </div>
 
+    <!-- Окно создания и редактирования заявки -->
     <div class='modal fade' tabindex='-1' id='createTaskModal' aria-hidden='true'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -221,8 +224,7 @@
                             <select class="form-select" id="taskStatus" required>
                                 <option value="open" selected>Открыта</option>
                                 <option value="in_progress">В работе</option>
-                                <option value="resolved">Завершена</option>
-                                <option value="closed">Закрыта</option>
+                                <option value="closed">Отменена</option>
                             </select>
                         </div>
                         
@@ -319,12 +321,14 @@
                 
                 <!-- Футер с кнопками -->
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                    <button type="button" class="btn btn-danger" id="taskDeleteBtn">
-                        <i class="fas fa-trash me-2"></i>Удалить
+                    <button type="button" class="btn btn-success" id="taskEndBtn">
+                        <i class="fa fa-check-square me-2"></i>Завершить
                     </button>
                     <button type="button" class="btn btn-primary" id="taskEditBtn">
                         <i class="fas fa-edit me-2"></i>Редактировать
+                    </button>
+                    <button type="button" class="btn btn-danger" id="taskDeleteBtn">
+                        <i class="fa-trash me-2"></i>Удалить
                     </button>
                 </div>
             </div>
