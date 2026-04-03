@@ -186,7 +186,7 @@ export class TaskWheel {
         
         // Ждем окончания анимации (4 секунды как в CSS)
         setTimeout(() => {
-            this.wheelSvg.classList.remove('wheel-spinning');
+            wheelSvg.classList.remove('wheel-spinning');
             this.determineWinner(totalRotation);
         }, 4000);
     }
