@@ -13,7 +13,7 @@ export class TasksService {
         //         name: "1234",
         //         author: "Иван",
         //         status: "in_progress",
-        //         user_id: 1,
+        //         userName: "Test",
         //         created_at: "02.04.2026",
         //         updated_at: "",
         //         completed_at: "",

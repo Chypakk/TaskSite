@@ -16,6 +16,7 @@
     <script type='module' src="js/app.js"></script>
 
     <title>Сайт заявок Союз-PLM</title>
+    <link rel="icon" href="biaoqing.ico" type="image/x-icon">
 
 </head>
 <body>
@@ -231,7 +232,7 @@
                         <!-- Блок ошибок -->
                         <div class="alert alert-danger alert-dismissible fade show" id="taskErrorAlert" style="display: none;">
                             <strong>Ошибка!</strong> <span id="taskErrorText"></span>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
                         </div>
                         
                         <!-- Блок успеха -->
@@ -253,7 +254,7 @@
 
 
     <!-- Модальное окно просмотра задачи -->
-    <div class="modal fade" tabindex="-1" id="taskViewModal" aria-hidden="true">
+    <div class="modal fade" tabindex="-1" id="taskViewModal" aria-hidden="false">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 
@@ -302,6 +303,10 @@
                             <label class="text-muted small">Автор</label>
                             <div id="viewTaskAuthor"></div>
                         </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="text-muted small">Взята</label>
+                            <h6 id="viewUserClaim" class="mb-0"></h6>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label class="text-muted small">Дата создания</label>
                             <div id="viewTaskCreatedAt"></div>
@@ -315,21 +320,29 @@
                     <!-- Блок ошибок -->
                     <div class="alert alert-danger alert-dismissible fade show" id="viewTaskError" style="display: none;">
                         <strong>Ошибка!</strong> <span id="viewTaskErrorText"></span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
                     </div>
                 </div>
                 
                 <!-- Футер с кнопками -->
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" id="taskEndBtn">
-                        <i class="fa fa-check-square me-2"></i>Завершить
-                    </button>
-                    <button type="button" class="btn btn-primary" id="taskEditBtn">
+                    <button type="button" class="btn btn-primary me-auto" id="taskEditBtn">
                         <i class="fas fa-edit me-2"></i>Редактировать
                     </button>
-                    <button type="button" class="btn btn-danger" id="taskDeleteBtn">
-                        <i class="fa-trash me-2"></i>Удалить
-                    </button>
+
+                    <!-- Группа кнопок действий (справа) -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-warning" id="taskClaimBtn">
+                            <i class="fa fa-cart-arrow-down me-2"></i>Взять задачу
+                        </button>
+                        <button type="button" class="btn btn-success" id="taskEndBtn">
+                            <i class="fa fa-check-square me-2"></i>Завершить
+                        </button>
+
+                        <button type="button" class="btn btn-danger" id="taskDeleteBtn">
+                            <i class="fas fa-trash me-2"></i>Удалить
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

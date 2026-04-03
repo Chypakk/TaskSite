@@ -47,6 +47,10 @@ export class TaskViewModal {
             this.handleComplete();
         });
 
+        // Кнопка взять задачу
+        document.getElementById('taskClaimBtn').addEventListener('click', () => {
+            this.handleClaim();
+        });
         // Очистка при закрытии
         this.modalElement.addEventListener('hidden.bs.modal', () => {
             this.currentTaskId = null;
@@ -69,7 +73,7 @@ export class TaskViewModal {
             //     author: "Иван",
             //     status: "closed",
             //     description: "Очень тестовая задача",
-            //     user_id: 1,
+            //     userName: "Test",
             //     created_at: "2026-04-02T05:05:05Z",
             //     updated_at: "0001-01-01T00:00:00Z",
             //     completed_at: "",
@@ -107,6 +111,9 @@ export class TaskViewModal {
         
         // Автор
         document.getElementById('viewTaskAuthor').textContent = task.author;
+
+        // Кто взял на исполнение
+        document.getElementById('viewUserClaim').textContent = task.userName;
         
         // Даты
         document.getElementById('viewTaskCreatedAt').textContent = FormatService.formatDate(task.created_at);
@@ -135,7 +142,7 @@ export class TaskViewModal {
         }
     }
     
-       // Удаление задачи
+    // Завершение задачи
     async handleComplete() {
         if (!confirm('Вы уверены, что хотите завершить заявку #' + this.currentTaskId + '?')) {
             return;
@@ -156,9 +163,30 @@ export class TaskViewModal {
         }
     }
 
+    // Взять задачу
+    async handleClaim() {
+        try {
+            await this.apiService.post(`/api/tasks/${this.currentTaskId}/claim`);
+            
+            this.bootstrapModal.hide();
+            
+            alert('Заявка успешно взята');
+            
+            // Событие для обновления таблицы
+            document.dispatchEvent(new CustomEvent('task:saved'));
+            
+        } catch (error) {
+            this.showError('Не удалось взять задачу: ' + error.message);
+        }
+    }
+
     showError(message) {
         document.getElementById('viewTaskErrorText').textContent = message;
         document.getElementById('viewTaskError').style.display = 'block';
+        // Автоскрытие через 5 секунд
+        setTimeout(() => {
+            this.clearError();
+        }, 5000);
     }
     
     clearError() {

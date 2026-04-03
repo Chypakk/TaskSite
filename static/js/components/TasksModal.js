@@ -99,7 +99,7 @@ export class TasksModal{
             //     author: "Иван",
             //     status: "closed",
             //     description: "Очень тестовая задача",
-            //     user_id: 1,
+            //     userName: "Test",
             //     created_at: "2026-04-02T05:05:05Z",
             //     updated_at: "0001-01-01T00:00:00Z",
             //     completed_at: "",
@@ -162,6 +162,7 @@ export class TasksModal{
                 const response = await this.tasksService.updateTask(taskId,formData);
                 if(response.ok){
                     this.showSuccess('Заявка обновлена!');
+                    //console.log('Task update successfully');
                 }
                 else{
                     this.showError(error.message || 'Ошибка при сохранении');
@@ -204,6 +205,10 @@ export class TasksModal{
         document.getElementById('taskErrorText').textContent = message;
         document.getElementById('taskErrorAlert').style.display = 'block';
         document.getElementById('taskSuccessAlert').style.display = 'none';
+        // Автоскрытие через 5 секунд
+        setTimeout(() => {
+            this.clearAlerts();
+        }, 5000);
     }
     
     showSuccess(message) {
@@ -270,7 +275,7 @@ export class TasksModal{
                 <td>${item.name}</td>
                 <td>${item.author}</td>
                 <td class="highlight">${FormatService.getStatusText(item.status)}</td>
-                <td>${item.user_id}</td>
+                <td>${item.userName}</td>
                 <td>${FormatService.formatDate(item.created_at)}</td>
                 <td>${FormatService.formatDate(item.updated_at)}</td>
                 <td>${FormatService.formatDate(item.completed_at)}</td>
