@@ -2,14 +2,15 @@ export class ApiService {
     constructor() {
     }
     
-    async request(endpoint, options = {}) {
-        const url = `${endpoint}`;
+    async request(endpoint, options = {}, query = '') {
+        const url = query == ''?  `${endpoint}`: `${endpoint}?${query}`;
         const config = {
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers
             },
             ...options
+
         };
         const token = this._getSessionToken();
 
@@ -30,11 +31,11 @@ export class ApiService {
         return await response;
     }
     
-    async get(endpoint, data) {
+    async get(endpoint, data, query) {
         return await this.request(endpoint, {
             method: 'GET',
             body: data
-        });
+        }, query);
     }
     
     async post(endpoint, data) {
