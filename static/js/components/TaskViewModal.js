@@ -73,7 +73,7 @@ export class TaskViewModal {
             //     author: "Иван",
             //     status: "closed",
             //     description: "Очень тестовая задача",
-            //     userName: "Test",
+            //     username: "Test",
             //     created_at: "2026-04-02T05:05:05Z",
             //     updated_at: "0001-01-01T00:00:00Z",
             //     completed_at: "",
@@ -113,7 +113,7 @@ export class TaskViewModal {
         document.getElementById('viewTaskAuthor').textContent = task.author;
 
         // Кто взял на исполнение
-        document.getElementById('viewUserClaim').textContent = task.userName;
+        document.getElementById('viewUserClaim').textContent = task.username;
         
         // Даты
         document.getElementById('viewTaskCreatedAt').textContent = FormatService.formatDate(task.created_at);

@@ -99,7 +99,7 @@ export class TasksModal{
             //     author: "Иван",
             //     status: "closed",
             //     description: "Очень тестовая задача",
-            //     userName: "Test",
+            //     username: "Test",
             //     created_at: "2026-04-02T05:05:05Z",
             //     updated_at: "0001-01-01T00:00:00Z",
             //     completed_at: "",
@@ -275,7 +275,7 @@ export class TasksModal{
                 <td>${item.name}</td>
                 <td>${item.author}</td>
                 <td class="highlight">${FormatService.getStatusText(item.status)}</td>
-                <td>${item.userName}</td>
+                <td>${item.username}</td>
                 <td>${FormatService.formatDate(item.created_at)}</td>
                 <td>${FormatService.formatDate(item.updated_at)}</td>
                 <td>${FormatService.formatDate(item.completed_at)}</td>
