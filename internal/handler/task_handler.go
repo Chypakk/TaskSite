@@ -2,19 +2,25 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"tasksite/internal/model"
+	"tasksite/internal/service"
 	"tasksite/internal/storage"
 )
 
 type TaskHandler struct {
+	taskService *service.TaskService
 	storage *storage.Storage
 }
 
 func NewTaskHandler(storage *storage.Storage) *TaskHandler {
-	return &TaskHandler{storage: storage}
+	return &TaskHandler{
+		taskService: service.NewTaskService(storage),
+		storage : storage,
+	}
 }
 
 // CreateTask godoc
@@ -80,14 +86,10 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		statusFilter = &status
 	}
 
-	tasks, err := h.storage.GetTasks(statusFilter)
+	tasks, err := h.taskService.GetTasks(statusFilter)
 	if err != nil {
 		http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
 		return
-	}
-
-	if tasks == nil {
-		tasks = []model.Task{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -107,7 +109,7 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.GetTaskByID(id)
+	task, err := h.taskService.GetTaskByID(id)
 	if err != nil {
 		http.Error(w, "Failed to get task", http.StatusInternalServerError)
 		return
@@ -136,14 +138,25 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.storage.GetUserByUsername(username)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
-	if err := h.storage.DeleteTask(id, user.ID); err != nil {
-		http.Error(w, "Failed to delete task", http.StatusNotFound)
+	if err := h.taskService.DeleteTask(id, username); err != nil {
+		errMsg := err.Error()
+	
+		// Если юзер не найден — это баг, 500
+		if strings.Contains(errMsg, "user not found in storage") {
+			log.Printf("Critical: user from session not in DB: %v", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		
+		// Если задача не найдена или доступ запрещён — 404
+		if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "access denied") {
+			http.Error(w, "Task not found or access denied", http.StatusNotFound)
+			return
+		}
+		
+		// Всё остальное — 500
+		log.Printf("DeleteTask error: %v", err)
+		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
 
@@ -162,12 +175,6 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.storage.GetUserByUsername(username)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	path = strings.TrimSuffix(path, "/claim")
 	taskID, err := strconv.Atoi(path)
@@ -176,24 +183,26 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.storage.ClaimTask(taskID, user.ID); err != nil {
-		if strings.Contains(err.Error(), "already claimed") {
+	taskDTO, err :=  h.taskService.ClaimTask(taskID, username)
+	if err != nil {
+		errMsg := err.Error()
+
+		if strings.Contains(errMsg, "already claimed") {
 			http.Error(w, "Task already claimed", http.StatusConflict)
 			return
 		}
-		http.Error(w, "Failed to claim task", http.StatusInternalServerError)
-		return
-	}
 
-	task, err := h.storage.GetTaskByID(taskID)
-	if err != nil {
-		http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
+		if strings.Contains(errMsg, "fetch") {
+			http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
+		}
+
+		http.Error(w, "Failed to claim task", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(task)
+	json.NewEncoder(w).Encode(taskDTO)
 }
 
 func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
@@ -206,13 +215,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := r.Context().Value("username").(string)
-	user, err := h.storage.GetUserByUsername(username)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
 
-	task, err := h.storage.CompleteTask(taskID, user.ID)
+	task, err := h.taskService.CompleteTask(taskID, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "Task not found", http.StatusNotFound)
@@ -245,12 +249,6 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := r.Context().Value("username").(string)
-	user, err := h.storage.GetUserByUsername(username)
-	if err != nil {
-		http.Error(w, "User not found", http.StatusInternalServerError)
-		return
-	}
-
 	var req model.UpdateTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -258,7 +256,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.UpdateTask(id, req, user.ID)
+	task, err := h.taskService.UpdateTask(id, req, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "access denied") {
 			http.Error(w, "You can't edit this task", http.StatusForbidden)
