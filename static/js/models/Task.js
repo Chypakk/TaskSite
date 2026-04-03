@@ -7,6 +7,6 @@ export class Task {
         this.status = data.status || '';
         this.created_at = data.created_at || '';
         this.completed_at = data.completed_at || '';
-        this.userName = data.userName || '';
+        this.username = data.username || '';
     }
 }
