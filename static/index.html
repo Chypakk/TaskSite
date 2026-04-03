@@ -38,6 +38,9 @@
                 <button class="btn btn-success btn-custom col-2" id="uppdateTaskBtn">
                     <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
                 </button>
+                <button class="btn btn-warning btn-custom" id="randomTaskBtn">
+                    <i class="fas fa-random"></i> Случайная задача
+                </button>
             </div>
             
             <!-- Фильтры (опционально) -->
@@ -347,6 +350,71 @@
             </div>
         </div>
     </div>
+
+    <!-- Модальное окно барабана (не закрываемое) -->
+    <div class="modal fade" id="wheelModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                
+                <!-- Заголовок без кнопки закрытия -->
+                <div class="modal-header">
+                    <h5 class="modal-title w-100 text-center">
+                        <i class="fas fa-dharmachakra me-2"></i>
+                        Случайный выбор задачи
+                    </h5>
+                </div>
+                
+                <!-- Тело с барабаном -->
+                <div class="modal-body text-center">
+                    <p class="text-muted mb-4">Крутим барабан для выбора задачи...</p>
+                    
+                    <!-- Контейнер барабана -->
+                    <div class="wheel-container position-relative d-inline-block">
+                        <!-- Указатель (стрелка сверху) -->
+                        <div class="wheel-pointer position-absolute text-center">
+                            <i class="fas fa-chevron-down fa-2x text-danger"></i>
+                        </div>
+                        
+                        <!-- Сам барабан (SVG) -->
+                        <svg id="wheelSvg" class="wheel-svg" viewBox="0 0 400 400">
+                            <g id="wheelSegments"></g>
+                            <circle cx="200" cy="200" r="10" fill="#fff" stroke="#333" stroke-width="3"/>
+                        </svg>
+                        
+                        <!-- Кнопка запуска (показывается до старта) -->
+                        <button id="spinButton" class="btn btn-primary btn-lg position-absolute top-50 start-50 translate-middle">
+                            <i class="fas fa-play me-2"></i>Крутить!
+                        </button>
+                    </div>
+                    
+                    <!-- Индикатор вращения -->
+                    <div id="spinningIndicator" class="mt-4" hidden>
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Вращение...</span>
+                        </div>
+                        <p class="mt-2">Выбираем задачу...</p>
+                    </div>
+                    
+                    <!-- Результат -->
+                    <div id="wheelResult" class="mt-4" hidden>
+                        <div class="alert alert-success">
+                            <h5 class="mb-2">🎉 Выпала задача #<span id="resultTaskId"></span></h5>
+                            <p id="resultTaskTitle" class="mb-3"></p>
+                            <button id="claimTaskBtn" class="btn btn-success">
+                                <i class="fas fa-check me-2"></i>Взять в работу
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Футер (скрыт до результата) -->
+                <div class="modal-footer" id="wheelFooter" hidden>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
 
 </body>

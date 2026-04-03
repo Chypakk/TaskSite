@@ -247,8 +247,8 @@ export class TasksModal{
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
             document.getElementById('tasksTableBody').innerHTML = `
-                <tr><td colspan="16" style="text-align: center; padding: 20px; color: #ef4444;">
-                    ❌ Ошибка загрузки данных. Проверьте подключение к сети.
+                <tr><td colspan="16" style="text-align: center; padding: 20px; color: #ef4444;"> 
+                Молчать! "Ошибка загрузки данных" ❌. Сейчас говорит сервер: ${error}.
                 </td></tr>
             `;
         } finally {

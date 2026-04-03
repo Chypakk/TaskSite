@@ -7,18 +7,28 @@ export class TasksService {
     }
     async getAllTasks(status = '') {
 
-        // return [
-        //     {
-        //         id: 1,
-        //         name: "1234",
-        //         author: "Иван",
-        //         status: "in_progress",
-        //         username: "Test",
-        //         created_at: "02.04.2026",
-        //         updated_at: "",
-        //         completed_at: "",
-        //     }
-        // ]
+        return [
+            {
+                id: 1,
+                name: "Пров1",
+                author: "Иван",
+                status: "open",
+                username: "Test",
+                created_at: "02.04.2026",
+                updated_at: "",
+                completed_at: "",
+            },
+            {
+                id: 2,
+                name: "Пров2",
+                author: "Иван",
+                status: "open",
+                username: "Test",
+                created_at: "02.04.2026",
+                updated_at: "",
+                completed_at: "",
+            }
+        ]
         const response = await this.apiService.get('/api/tasks', null, status);
         return await response.json();
     }
