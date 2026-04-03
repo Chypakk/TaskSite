@@ -3,6 +3,10 @@ import { AuthModal } from './components/AuthModal.js';
 import { TasksModal } from './components/TasksModal.js';
 import { TaskViewModal } from './components/TaskViewModal.js';
 
+import { TaskWheel } from './components/TaskWheel.js';
+
+import { ApiService } from './services/ApiService.js';
+
 import { AuthService } from './services/AuthService.js';
 
 
@@ -15,6 +19,9 @@ class Program {
         this.authService = new AuthService();
         this.tasksModal = new TasksModal();
         this.taskViewModal = null;
+
+        //
+        this.taskWheel = null;
     }
 
      async initialize() {
@@ -44,6 +51,10 @@ class Program {
         this.tasksModal.initialize();
         this.taskViewModal = new TaskViewModal(this.tasksModal);
         this.taskViewModal.initialize();
+
+        this.taskWheel = new TaskWheel(new ApiService());
+        this.taskWheel.initialize();
+
         this.bindButtons();
         this.bindEvents();
     }
@@ -63,6 +74,12 @@ class Program {
         });
 
 
+        document.getElementById('randomTaskBtn').addEventListener('click', async () => {
+            const tasks = await this.tasksModal.tasksService.getAllTasks(`status=open`);
+
+
+            this.taskWheel.open(tasks);
+            });
     }
 
     bindEvents() {
