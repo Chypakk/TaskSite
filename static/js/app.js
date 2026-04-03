@@ -75,6 +75,10 @@ class Program {
         document.addEventListener('task:deleted', () => {
             this.tasksModal.fetchData();
         });
+
+        document.getElementById('statusFilter').addEventListener('change',(e)=>{
+            this.tasksModal.fetchData(true, e.target.value != ''? `status=${e.target.value}`: '');
+        });
     }
 
     async logout() {
@@ -84,6 +88,7 @@ class Program {
             document.getElementById('quit').hidden = true;
             document.getElementById('regLog').hidden = false;
             console.log('User logged out');
+            await this.tasksModal.fetchData();
         }
     }
 

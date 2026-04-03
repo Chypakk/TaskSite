@@ -5,7 +5,7 @@ export class TasksService {
     constructor() {
         this.apiService = new ApiService();
     }
-    async getAllTasks() {
+    async getAllTasks(status = '') {
 
         // return [
         //     {
@@ -19,8 +19,7 @@ export class TasksService {
         //         completed_at: "",
         //     }
         // ]
-
-        const response = await this.apiService.get('/api/tasks', null);
+        const response = await this.apiService.get('/api/tasks', null, status);
         return await response.json();
     }
 
