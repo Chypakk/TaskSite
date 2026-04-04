@@ -83,7 +83,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "7070"
+		port = "8081"
 	}
 
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)

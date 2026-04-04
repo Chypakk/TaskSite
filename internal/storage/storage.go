@@ -194,7 +194,7 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 
 func (s *Storage) ClaimTask(taskId, userId int) error {
 	result, err := s.db.Exec(
-		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status = 'open'",
+		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status != 'completed'",
 		userId, taskId,
 	)
 
@@ -309,6 +309,10 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 			updates = append(updates, "completed_at = ?")
 			args = append(args, time.Now())
 		}
+
+		if req.Status == "open" {
+			updates = append(updates, "user_id = null")
+		}
 	}
 
 	if len(updates) == 0 {
@@ -365,6 +369,28 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 	row := s.db.QueryRow(
 		"SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
 		username,
+	)
+
+	var user model.User
+	var createdAtStr sql.NullString
+
+	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &createdAtStr)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, err
+	}
+
+	user.CreatedAt, _ = parseTime(createdAtStr)
+
+	return &user, nil
+}
+
+func (s *Storage) GetUserById(id int) (*model.User, error){
+	row := s.db.QueryRow(
+		"SELECT id, username, password_hash, created_at FROM users WHERE id = ?",
+		id,
 	)
 
 	var user model.User
