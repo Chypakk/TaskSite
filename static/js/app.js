@@ -5,8 +5,6 @@ import { TaskViewModal } from './components/TaskViewModal.js';
 
 import { TaskWheel } from './components/TaskWheel.js';
 
-import { ApiService } from './services/ApiService.js';
-
 import { AuthService } from './services/AuthService.js';
 
 
@@ -18,13 +16,11 @@ class Program {
 
         this.authService = new AuthService();
         this.tasksModal = new TasksModal();
+        this.taskWheel = new TaskWheel();
         this.taskViewModal = null;
-
-        //
-        this.taskWheel = null;
     }
 
-     async initialize() {
+    async initialize() {
         try {
             // Пытаемся автоматически войти
             const autoLoginResult =  await this.authService.tryAutoLogin();
@@ -52,7 +48,6 @@ class Program {
         this.taskViewModal = new TaskViewModal(this.tasksModal);
         this.taskViewModal.initialize();
 
-        this.taskWheel = new TaskWheel(new ApiService());
         this.taskWheel.initialize();
 
         this.bindButtons();
@@ -70,16 +65,14 @@ class Program {
         });
 
         document.getElementById('uppdateTaskBtn').addEventListener('click', () => {
-            this.tasksModal.fetchData();
+            const filtr = document.getElementById('statusFilter');
+            const statusText = filtr.value == '' ? '': `status=${filtr.value}`;
+            this.tasksModal.fetchData(true, statusText);
         });
 
-
         document.getElementById('randomTaskBtn').addEventListener('click', async () => {
-            const tasks = await this.tasksModal.tasksService.getAllTasks(`status=open`);
-
-
-            this.taskWheel.open(tasks);
-            });
+            this.taskWheel.open();
+        });
     }
 
     bindEvents() {

@@ -1,6 +1,8 @@
+import { TasksService } from '../services/TasksService.js';
+
 export class TaskWheel {
-    constructor(apiService) {
-        this.apiService = apiService;
+    constructor() {
+        this.tasksService = new TasksService();
         this.modalElement = null;
         this.bootstrapModal = null;
         this.tasks = [];
@@ -46,15 +48,12 @@ export class TaskWheel {
         document.getElementById('spinButton').addEventListener('click', () => {
             this.spin();
         });
-        
-        // Кнопка взятия задачи
-        document.getElementById('claimTaskBtn').addEventListener('click', () => {
-            this.handleClaim();
-        });
     }
     
     // Открытие барабана с задачами
-    async open(tasks) {
+    async open() {
+        const tasks = await this.tasksService.getAllTasks(`status=open`);
+
         if (!tasks || tasks.length === 0) {
             alert('Нет доступных задач для выбора');
             return;
@@ -79,6 +78,7 @@ export class TaskWheel {
         document.getElementById('wheelResult').hidden = true;
         document.getElementById('wheelFooter').hidden = true;
         document.getElementById('wheelSvg').style.transform = 'rotate(0deg)';
+        this.clearError();
     }
     
     // Отрисовка барабана
@@ -186,7 +186,7 @@ export class TaskWheel {
         
         // Ждем окончания анимации (4 секунды как в CSS)
         setTimeout(() => {
-            this.wheelSvg.classList.remove('wheel-spinning');
+            wheelSvg.classList.remove('wheel-spinning');
             this.determineWinner(totalRotation);
         }, 4000);
     }
@@ -210,34 +210,44 @@ export class TaskWheel {
     }
     
     // Показ результата
-    showResult(task) {
-        document.getElementById('spinningIndicator').hidden = true;
-        document.getElementById('wheelResult').hidden = false;
+    async showResult(task) {
+
         document.getElementById('wheelFooter').hidden = false;
-        
-        document.getElementById('resultTaskId').textContent = task.id;
-        document.getElementById('resultTaskTitle').textContent = task.title || 'Без названия';
-        
+        const result = await this.handleClaim();
+        document.getElementById('spinningIndicator').hidden = true;
+        if(result){
+            document.getElementById('wheelResult').hidden = false;
+            document.getElementById('resultTaskId').textContent = task.id;
+            document.getElementById('resultTaskTitle').textContent = task.name || 'Без названия';
+        }
+        else{
+            // setTimeout(() => {
+            //     this.resetWheel();
+            // }, 5000);
+        }
+
         // Эффект конфетти (опционально)
-        this.celebrate();
+        //this.celebrate();
     }
     
-    // Взятие задачи в работу
+    // Взять задачу
     async handleClaim() {
-        if (!this.selectedTask) return;
-        
         try {
-            await this.apiService.post(`/api/tasks/${this.selectedTask.id}/claim`);
-            
-            this.bootstrapModal.hide();
-            
-            alert(`Задача #${this.selectedTask.id} успешно взята в работу!`);
-            
-            // Событие для обновления таблицы
-            document.dispatchEvent(new CustomEvent('task:saved'));
-            
+            const response = await this.tasksService.claimTask(this.currentTaskId);
+            if(response.ok){
+                this.bootstrapModal.hide();
+                
+                // Событие для обновления таблицы
+                document.dispatchEvent(new CustomEvent('task:saved'));
+                return true;
+            }
+            else{
+                this.showError('Не удалось взять задачу: ' + error.message);
+                return false;
+            }
         } catch (error) {
-            alert('Не удалось взять задачу: ' + error.message);
+            this.showError('Не удалось взять задачу: ' + error.message);
+            return false;
         }
     }
     
@@ -247,5 +257,14 @@ export class TaskWheel {
         // Или просто анимацию
         const result = document.getElementById('wheelResult');
         result.style.animation = 'bounce 0.5s ease 3';
+    }
+
+    showError(message) {
+        document.getElementById('wheelErrorText').textContent = message;
+        document.getElementById('wheelError').style.display = 'block';
+    }
+
+    clearError() {
+        document.getElementById('wheelError').style.display = 'none';
     }
 }

@@ -26,34 +26,40 @@
                 Зарегистрироваться или войти
             </button>
             <button type='submit' class='show-Register-Form btn btn-primary btn-custom' id='quit' hidden>Выйти</button>
-            <input type='text' class='login-text' id='usernameDisplay' disabled style='color: black;'></input>
+            <input type='text' class='login-text' id='usernameDisplay' disabled style='color: rgb(255, 255, 255);'></input>
         </div>
 
         <div class="container-fluid mt-4" id="tasksSection">
-            <div class="d-flex justify-content-end  mb-3">
-                
-                <button class="btn btn-success btn-custom col-2" id="createTaskBtn">
-                    <i class="fas fa-plus"></i> Новая заявка
-                </button>
-                <button class="btn btn-success btn-custom col-2" id="uppdateTaskBtn">
-                    <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
-                </button>
-                <button class="btn btn-warning btn-custom" id="randomTaskBtn">
-                    <i class="fas fa-random"></i> Случайная задача
-                </button>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <h3 class="textUI mb-0">Список задач</h3>
+                    <!-- Фильтр статусов (компактный) -->
+                    <select class="form-select form-select-sm" id="statusFilter" style="width: 180px;">
+                        <option value="">Все статусы</option>
+                        <option value="open">Открытые</option>
+                        <option value="in_progress">В работе</option>
+                        <option value="completed">Выполненные</option>
+                        <option value="closed">Отмененные</option>
+                    </select>
+                </div>
+                <!-- Правая часть: кнопки -->
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success btn-custom" id="createTaskBtn">
+                        <i class="fas fa-plus"></i> Новая заявка
+                    </button>
+                    <button class="btn btn-success btn-custom" id="uppdateTaskBtn">
+                        <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
+                    </button>
+                    <button class="btn btn-warning btn-custom" id="randomTaskBtn">
+                        <i class="fas fa-random"></i> Случайная задача
+                    </button>
+                </div>
             </div>
             
             <!-- Фильтры (опционально) -->
             <div class="row mb-3" id="taskFilters">
-                <div class="d-flex col-md-6">
-                    <h3 class="col-3 textUI">Мои заявки</h3>
-                    <select class="form-select" id="statusFilter">
-                        <option value="">Все статусы</option>
-                        <option value="open">Открытые</option>
-                        <option value="in_progress">В работе</option>
-                        <option value="completed">Выполненые</option>
-                        <option value="closed">Отмененные</option>
-                    </select>
+                <div class="container-fluid">
+
                 </div>
             </div>
 
@@ -366,7 +372,7 @@
                 
                 <!-- Тело с барабаном -->
                 <div class="modal-body text-center">
-                    <p class="text-muted mb-4">Крутим барабан для выбора задачи...</p>
+                    <p class="text-muted mb-4">Барабан для выбора задачи</p>
                     
                     <!-- Контейнер барабана -->
                     <div class="wheel-container position-relative d-inline-block">
@@ -392,20 +398,27 @@
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Вращение...</span>
                         </div>
-                        <p class="mt-2">Выбираем задачу...</p>
+                        <p class="mt-2">Назначаем тебя на что-то интересное...</p>
                     </div>
                     
                     <!-- Результат -->
                     <div id="wheelResult" class="mt-4" hidden>
-                        <div class="alert alert-success">
-                            <h5 class="mb-2">🎉 Выпала задача #<span id="resultTaskId"></span></h5>
-                            <p id="resultTaskTitle" class="mb-3"></p>
-                            <button id="claimTaskBtn" class="btn btn-success">
-                                <i class="fas fa-check me-2"></i>Взять в работу
-                            </button>
+                        <div class="alert alert-primary">
+                            <h5 class="mb-2">🎉 Поздравляю!😘</h5>
+                            <h5 class="mb-3"> Теперь ты обречен делать задачу #<span id="resultTaskId"></span></h5>
+                            <p class="mb-3"> Её название: <span id="resultTaskTitle"></span></p>
                         </div>
                     </div>
+
+                    <!-- Блок ошибок -->
+                    <div class="alert alert-danger alert-dismissible fade show" id="wheelError" style="display: none;">
+                        <strong>Упс...</strong> <span id="wheelErrorText"></span>
+                        <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
+                    </div>
+
                 </div>
+
+
                 
                 <!-- Футер (скрыт до результата) -->
                 <div class="modal-footer" id="wheelFooter" hidden>
