@@ -1,10 +1,11 @@
-import { ApiService } from '../services/ApiService.js';
+import { TasksService } from '../services/TasksService.js';
+
 import * as FormatService from '../services/FormatService.js';
 
 export class TaskViewModal {
     constructor(taskForm) {
-        this.apiService = new ApiService();
         this.taskForm = taskForm; // Для открытия формы редактирования
+        this.tasksService = new TasksService();
         this.modalElement = null;
         this.bootstrapModal = null;
         this.currentTaskId = null;
@@ -66,7 +67,7 @@ export class TaskViewModal {
         this.setLoading(true);
         
         try {
-            const task = await(await this.apiService.get(`/api/tasks/${taskId}`)).json();
+            const task = await this.tasksService.getTask(taskId);
             // const task =             {
             //     id: 1,
             //     name: "1234",
@@ -127,7 +128,7 @@ export class TaskViewModal {
         }
         
         try {
-            await this.apiService.delete(`/api/tasks/${this.currentTaskId}`);
+            await this.tasksService.deleteTask(this.currentTaskId);
             
             this.bootstrapModal.hide();
             
@@ -149,7 +150,7 @@ export class TaskViewModal {
         }
         
         try {
-            await this.apiService.post(`/api/tasks/${this.currentTaskId}/complete`);
+            await this.tasksService.completeTask(this.currentTaskId);
             
             this.bootstrapModal.hide();
             
@@ -166,7 +167,8 @@ export class TaskViewModal {
     // Взять задачу
     async handleClaim() {
         try {
-            await this.apiService.post(`/api/tasks/${this.currentTaskId}/claim`);
+
+            await this.tasksService.claimTask(this.currentTaskId);
             
             this.bootstrapModal.hide();
             
