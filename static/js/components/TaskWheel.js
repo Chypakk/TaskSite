@@ -213,7 +213,7 @@ export class TaskWheel {
     async showResult(task) {
 
         document.getElementById('wheelFooter').hidden = false;
-        const result = await this.handleClaim();
+        const result = await this.handleClaim(task.id);
         document.getElementById('spinningIndicator').hidden = true;
         if(result){
             document.getElementById('wheelResult').hidden = false;
@@ -221,9 +221,9 @@ export class TaskWheel {
             document.getElementById('resultTaskTitle').textContent = task.name || 'Без названия';
         }
         else{
-            // setTimeout(() => {
-            //     this.resetWheel();
-            // }, 5000);
+            setTimeout(() => {
+                this.resetWheel();
+            }, 5000);
         }
 
         // Эффект конфетти (опционально)
@@ -231,9 +231,9 @@ export class TaskWheel {
     }
     
     // Взять задачу
-    async handleClaim() {
+    async handleClaim(taslId) {
         try {
-            const response = await this.tasksService.claimTask(this.currentTaskId);
+            const response = await this.tasksService.claimTask(taslId);
             if(response.ok){
                 this.bootstrapModal.hide();
                 
