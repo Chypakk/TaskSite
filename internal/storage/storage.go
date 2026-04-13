@@ -306,8 +306,10 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 
 		// Авто-заполнение completed_at при смене статуса
 		if req.Status == "completed" {
-			updates = append(updates, "completed_at = ?")
+			updates = append(updates, "completed_at = COALESCE(completed_at, ?)")
 			args = append(args, time.Now())
+		} else {
+			updates = append(updates, "completed_at = NULL")
 		}
 
 		if req.Status == "open" {
@@ -320,7 +322,7 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 	}
 
 	args = append(args, taskID)
-	
+
 	query := fmt.Sprintf("UPDATE tasks SET %s, updated_at = CURRENT_TIMESTAMP WHERE id = ?", strings.Join(updates, ", "))
 
 	_, err = s.db.Exec(query, args...)
@@ -387,7 +389,7 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 	return &user, nil
 }
 
-func (s *Storage) GetUserById(id int) (*model.User, error){
+func (s *Storage) GetUserById(id int) (*model.User, error) {
 	row := s.db.QueryRow(
 		"SELECT id, username, password_hash, created_at FROM users WHERE id = ?",
 		id,
