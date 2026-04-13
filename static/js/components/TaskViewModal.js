@@ -172,8 +172,6 @@ export class TaskViewModal {
             
             this.bootstrapModal.hide();
             
-            alert('Заявка успешно взята');
-            
             // Событие для обновления таблицы
             document.dispatchEvent(new CustomEvent('task:saved'));
             

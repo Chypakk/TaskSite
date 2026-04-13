@@ -231,15 +231,16 @@ export class TaskWheel {
     }
     
     // Взять задачу
-    async handleClaim(taslId) {
+    async handleClaim(taskId) {
         try {
-            const response = await this.tasksService.claimTask(taslId);
+            const response = await this.tasksService.claimTask(taskId);
             if(response.ok){
-                this.bootstrapModal.hide();
-                
-                // Событие для обновления таблицы
-                document.dispatchEvent(new CustomEvent('task:saved'));
-                return true;
+                setTimeout(() => {
+                    this.bootstrapModal.hide();
+                    // Событие для обновления таблицы
+                    document.dispatchEvent(new CustomEvent('task:saved'));
+                    return true;
+                }, 3000);
             }
             else{
                 this.showError('Не удалось взять задачу: ' + error.message);

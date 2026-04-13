@@ -3,6 +3,7 @@ export class ApiService {
     }
     
     async request(endpoint, options = {}, query = '') {
+        endpoint = `http://172.17.17.200:8081${endpoint}`;
         const url = query == ''?  `${endpoint}`: `${endpoint}?${query}`;
         const config = {
             headers: {
