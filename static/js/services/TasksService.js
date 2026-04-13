@@ -8,6 +8,18 @@ export class TasksService {
 
     async getAllTasks(status = '') {
         const response = await this.apiService.get('/api/tasks', null, status);
+        
+        let allTaskResult = [];
+        if(response.ok)
+        {
+            allTaskResult = await response.json();
+
+            if(document.getElementById('my_task').checked){
+                const username = localStorage.getItem('username');
+                allTaskResult = allTaskResult.filter(task => task.username == username);
+            }
+            return allTaskResult;
+        }
         return await response.json();
     }
 
@@ -42,8 +54,9 @@ export class TasksService {
     }
     
     // async getAllTasks(status = '') {
+    //     let allTaskResult = [];
     //     if(status == ''){
-    //         return [
+    //         allTaskResult = [
     //             {
     //                 id: 1,
     //                 name: "Пров1",
@@ -114,5 +127,12 @@ export class TasksService {
     //             }
     //         ];
     //     }
+
+    //     if(document.getElementById('my_task').checked){
+    //         const username = localStorage.getItem('username');
+    //         allTaskResult = allTaskResult.filter(task => task.username == username);
+    //     }
+
+    //     return allTaskResult;
     // }
 }

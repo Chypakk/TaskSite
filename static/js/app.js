@@ -73,6 +73,12 @@ class Program {
         document.getElementById('randomTaskBtn').addEventListener('click', async () => {
             this.taskWheel.open();
         });
+
+        document.getElementById("my_task").addEventListener('change', async () => {
+            const filtr = document.getElementById('statusFilter');
+            const statusText = filtr.value == '' ? '': `status=${filtr.value}`;
+            this.tasksModal.fetchData(true, statusText);
+        });
     }
 
     bindEvents() {
