@@ -23,8 +23,12 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 
 		next(rw, r.WithContext(ctx))
 
-		log.Info(ctx, "[%s] %s %s → %d (%v)",
-			reqID, r.Method, r.URL.Path, rw.statusCode, time.Since(start))
+		log.Info(ctx, "request_completed",
+			"req_id", reqID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.statusCode,
+			"duration", time.Since(start))
 	}
 }
 
