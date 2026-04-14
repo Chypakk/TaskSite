@@ -132,7 +132,7 @@ func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.T
 		return nil, err
 	}
 	defer rows.Close()
-
+//
 	tasks := make([]model.Task, 0)
 	for rows.Next() {
 		var task model.Task
@@ -470,6 +470,132 @@ func (s *Storage) GetUserById(ctx context.Context, id int) (*model.User, error) 
 	user.CreatedAt, _ = parseTime(createdAtStr)
 
 	return &user, nil
+}
+
+// --- РАБОТА С ГРУППАМИ ЗАДАЧ ---
+
+func (s *Storage) CreateTaskGroup(ctx context.Context, name, description string) (*model.TaskGroup, error) {
+	start := time.Now()
+    res, err := s.db.Exec(
+        "INSERT INTO task_groups (name, description) VALUES (?, ?)",
+        name, description,
+    )
+    duration := time.Since(start)
+    s.logDBOp(ctx, "create_task_group", duration, err, "name", name)
+	if err != nil {
+        if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+            return nil, fmt.Errorf("group with this name already exists")
+        }
+        return nil, err
+    }
+    id, _ := res.LastInsertId()
+    return &model.TaskGroup{
+        ID:          int(id),
+        Name:        name,
+        Description: description,
+        CreatedAt:   time.Now(),
+    }, nil
+}
+
+func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) {
+	start := time.Now()
+    rows, err := s.db.Query("SELECT id, name, description, created_at FROM task_groups ORDER BY name")
+    duration := time.Since(start)
+    s.logDBOp(ctx, "get_task_groups", duration, err)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    
+    var groups []model.TaskGroup
+    for rows.Next() {
+        var g model.TaskGroup
+        var createdAtStr sql.NullString
+        if err := rows.Scan(&g.ID, &g.Name, &g.Description, &createdAtStr); err != nil {
+            return nil, err
+        }
+        if createdAtStr.Valid {
+            g.CreatedAt, _ = parseTime(createdAtStr)
+        }
+        groups = append(groups, g)
+    }
+    return groups, nil
+}
+
+func (s *Storage) AssignTaskToGroup(ctx context.Context, taskID, groupID int) error {
+	start := time.Now()
+    var exists int
+    err := s.db.QueryRow("SELECT COUNT(*) FROM task_groups WHERE id = ?", groupID).Scan(&exists)
+    if err != nil || exists == 0 {
+        return fmt.Errorf("group not found")
+    }
+    
+    _, err = s.db.Exec("UPDATE tasks SET group_id = ? WHERE id = ?", groupID, taskID)
+    duration := time.Since(start)
+    s.logDBOp(ctx, "assign_task_to_group", duration, err, "task_id", taskID, "group_id", groupID)
+    return err
+}
+
+func (s *Storage) RemoveTaskFromGroup(ctx context.Context, taskID int) error {
+	start := time.Now()
+    _, err := s.db.Exec("UPDATE tasks SET group_id = NULL WHERE id = ?", taskID)
+    duration := time.Since(start)
+    s.logDBOp(ctx, "remove_task_from_group", duration, err, "task_id", taskID)
+    return err
+}
+
+func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]model.Task, error) {
+	start := time.Now()
+    query := `SELECT id, user_id, name, description, author, status, group_id, created_at, updated_at, completed_at 
+              FROM tasks WHERE group_id = ?`
+    var args []any = []any{groupID}
+    
+    if statusFilter != nil {
+        query += " AND status = ?"
+        args = append(args, *statusFilter)
+    }
+    query += " ORDER BY created_at DESC"
+    
+    rows, err := s.db.Query(query, args...)
+    duration := time.Since(start)
+    s.logDBOp(ctx, "get_tasks_by_group", duration, err, "group_id", groupID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+	tasks := make([]model.Task, 0)
+	for rows.Next() {
+		var task model.Task
+		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
+
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
+			return nil, err
+		}
+
+		if createdAtStr.Valid {
+			task.CreatedAt, err = parseTime(createdAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse created_at: %w", err)
+			}
+		}
+
+		if completedAtStr.Valid {
+			task.CompletedAt, err = parseTime(completedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
+		}
+
+		if updatedAtStr.Valid {
+			task.UpdatedAt, err = parseTime(updatedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
+		}
+
+		tasks = append(tasks, task)
+	}
+    return tasks, nil
 }
 
 func parseTime(nullStr sql.NullString) (time.Time, error) {

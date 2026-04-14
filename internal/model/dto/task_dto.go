@@ -5,6 +5,7 @@ import "time"
 type TaskDTO struct {
 	ID              int       `json:"id"`
 	Username        string    `json:"username,omitempty"`
+	GroupName       string    `json:"group_name,omitempty"`
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
 	Author          string    `json:"author"`
