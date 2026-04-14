@@ -35,6 +35,7 @@ func NewUserHandler(storage *storage.Storage) *UserHandler {
 // @Failure      409  {string}  string  "Username already exists"
 // @Router       /register [post]
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -47,7 +48,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.storage.CreateUser(req.Username, req.Password)
+	user, err := h.storage.CreateUser(ctx, req.Username, req.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			http.Error(w, "Username already exists", http.StatusConflict)
@@ -86,6 +87,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Failure      401  {string}  string  "Invalid credentials"
 // @Router       /login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -98,7 +100,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.storage.GetUserByUsername(req.Username)
+	user, err := h.storage.GetUserByUsername(ctx, req.Username)
 	if err != nil {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
@@ -123,6 +125,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
+	ctx := r.Context()
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -140,7 +143,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	user, err := h.storage.GetUserByUsername(username)
+	user, err := h.storage.GetUserByUsername(ctx, username)
 	if err != nil {
 		http.Error(w, "User not found", http.StatusInternalServerError)
 		return

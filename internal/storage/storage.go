@@ -1,11 +1,13 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"fmt"
 	"log"
 	"strings"
+	"tasksite/internal/logger"
 	"tasksite/internal/model"
 	"time"
 
@@ -42,6 +44,10 @@ func ConnectDB(dbPath string) (*Storage, error) {
 	return storage, nil
 }
 
+func (s *Storage) Ping() error {
+	return s.db.Ping()
+}
+
 func runMigrations(db *sql.DB) error {
 	driver, err := sqlite.WithInstance(db, &sqlite.Config{})
 	if err != nil {
@@ -73,13 +79,19 @@ func runMigrations(db *sql.DB) error {
 
 // --- РАБОТА С ТАСКАМИ ---
 
-func (s *Storage) CreateTask(name, description, author string) (*model.Task, error) {
+func (s *Storage) CreateTask(ctx context.Context, name, description, author string) (*model.Task, error) {
+	start := time.Now()
+
 	result, err := s.db.Exec(
 		"INSERT INTO tasks (name, description, author, status) VALUES (?, ?, ?, 'open')",
 		name,
 		description,
 		author,
 	)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "create_task", duration, err, "name", name, "author", author)
+
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +111,9 @@ func (s *Storage) CreateTask(name, description, author string) (*model.Task, err
 	}, nil
 }
 
-func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
+func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.Task, error) {
+	start := time.Now()
+
 	query := "SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE 1=1"
 	var args []any
 
@@ -110,6 +124,10 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 
 	query += " ORDER BY id DESC"
 	rows, err := s.db.Query(query, args...)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_tasks", duration, err, "status_filter", statusFilter)
+
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +169,9 @@ func (s *Storage) GetTasks(statusFilter *string) ([]model.Task, error) {
 	return tasks, nil
 }
 
-func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
+func (s *Storage) GetTaskByID(ctx context.Context, taskID int) (*model.Task, error) {
+	start := time.Now()
+
 	row := s.db.QueryRow(
 		"SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
@@ -161,6 +181,9 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 
 	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_task_by_id", duration, err, "task_id", taskID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -192,11 +215,16 @@ func (s *Storage) GetTaskByID(taskID int) (*model.Task, error) {
 	return &task, nil
 }
 
-func (s *Storage) ClaimTask(taskId, userId int) error {
+func (s *Storage) ClaimTask(ctx context.Context, taskId, userId int) error {
+	start := time.Now()
+
 	result, err := s.db.Exec(
 		"UPDATE tasks SET user_id = ?, status = 'in_progress' WHERE id = ? AND status != 'completed'",
 		userId, taskId,
 	)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "claim_task", duration, err, "task_id", taskId, "user_id", userId)
 
 	if err != nil {
 		return err
@@ -214,7 +242,8 @@ func (s *Storage) ClaimTask(taskId, userId int) error {
 	return nil
 }
 
-func (s *Storage) CompleteTask(taskID, userID int) (*model.Task, error) {
+func (s *Storage) CompleteTask(ctx context.Context, taskID, userID int) (*model.Task, error) {
+	start := time.Now()
 	row := s.db.QueryRow(
 		`SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at 
          FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
@@ -225,6 +254,10 @@ func (s *Storage) CompleteTask(taskID, userID int) (*model.Task, error) {
 	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
 		&task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "complete_task", duration, err, "task_id", taskID, "user_id", userID)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("task not found or forbidden")
@@ -246,8 +279,13 @@ func (s *Storage) CompleteTask(taskID, userID int) (*model.Task, error) {
 	return &task, nil
 }
 
-func (s *Storage) DeleteTask(id, userId int) error {
+func (s *Storage) DeleteTask(ctx context.Context, id, userId int) error {
+	start := time.Now()
+
 	result, err := s.db.Exec("DELETE FROM tasks WHERE id = ? AND (user_id = ? OR user_id IS NULL)", id, userId)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "delete_task", duration, err, "task_id", id, "user_id", userId)
 	if err != nil {
 		return err
 	}
@@ -264,7 +302,9 @@ func (s *Storage) DeleteTask(id, userId int) error {
 	return nil
 }
 
-func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID int) (*model.Task, error) {
+func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, editorID int) (*model.Task, error) {
+	start := time.Now()
+
 	var task model.Task
 	var createdAtStr, completedAtStr sql.NullString
 	err := s.db.QueryRow(
@@ -272,6 +312,9 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 		taskID,
 	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
 		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "update_task", duration, err, "task_id", taskID, "user_id", editorID)
 
 	if err != nil {
 		return nil, fmt.Errorf("task not found")
@@ -330,7 +373,7 @@ func (s *Storage) UpdateTask(taskID int, req model.UpdateTaskRequest, editorID i
 		return nil, err
 	}
 
-	return s.GetTaskByID(taskID)
+	return s.GetTaskByID(ctx, taskID)
 }
 
 // Close закрывает подключение к БД
@@ -340,13 +383,19 @@ func (s *Storage) Close() error {
 
 // --- РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ---
 
-func (s *Storage) CreateUser(username, password string) (*model.User, error) {
+func (s *Storage) CreateUser(ctx context.Context, username, password string) (*model.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
+	start := time.Now()
+
 	res, err := s.db.Exec("INSERT INTO users (username, password_hash) VALUES (?, ?)", username, hash)
+
+	duration := time.Since(start)
+    s.logDBOp(ctx, "create_user", duration, err, "username", username)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return nil, fmt.Errorf("username already exists")
@@ -367,7 +416,9 @@ func (s *Storage) CreateUser(username, password string) (*model.User, error) {
 	}, nil
 }
 
-func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
+func (s *Storage) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
+	start := time.Now()
+	
 	row := s.db.QueryRow(
 		"SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
 		username,
@@ -377,6 +428,9 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 	var createdAtStr sql.NullString
 
 	err := row.Scan(&user.ID, &user.Username, &user.PasswordHash, &createdAtStr)
+
+	duration := time.Since(start)
+    s.logDBOp(ctx, "get_user_by_username", duration, err, "username", username)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("user not found")
@@ -389,7 +443,7 @@ func (s *Storage) GetUserByUsername(username string) (*model.User, error) {
 	return &user, nil
 }
 
-func (s *Storage) GetUserById(id int) (*model.User, error) {
+func (s *Storage) GetUserById(ctx context.Context, id int) (*model.User, error) {
 	row := s.db.QueryRow(
 		"SELECT id, username, password_hash, created_at FROM users WHERE id = ?",
 		id,
@@ -416,4 +470,13 @@ func parseTime(nullStr sql.NullString) (time.Time, error) {
 		return time.Time{}, nil
 	}
 	return time.Parse(time.RFC3339, nullStr.String)
+}
+
+func (s *Storage) logDBOp(ctx context.Context, opName string, duration time.Duration, err error, args ...any) {
+	log := logger.FromContext(ctx)
+	if err != nil {
+		log.Error(ctx, fmt.Sprintf("DB: %s failed", opName), err, args...)
+	} else {
+		log.Info(ctx, fmt.Sprintf("DB: %s", opName), append([]any{"duration", duration}, args...)...)
+	}
 }

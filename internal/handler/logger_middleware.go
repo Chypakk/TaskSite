@@ -1,0 +1,50 @@
+package handler
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"net/http"
+	"tasksite/internal/logger"
+	"time"
+)
+
+func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqID := generateShortID()
+		start := time.Now()
+
+		log := logger.New()
+
+		ctx := context.WithValue(r.Context(), "request_id", reqID)
+		ctx = logger.WithLogger(ctx, log)
+
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		next(rw, r.WithContext(ctx))
+
+		log.Info(ctx, "[%s] %s %s → %d (%v)",
+			reqID, r.Method, r.URL.Path, rw.statusCode, time.Since(start))
+	}
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+func (rw *responseWriter) Header() http.Header {
+	rw.ResponseWriter.Header().Set("X-Request-Id",
+		rw.ResponseWriter.Header().Get("X-Request-Id"))
+	return rw.ResponseWriter.Header()
+}
+
+func generateShortID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}

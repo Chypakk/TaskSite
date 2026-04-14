@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"tasksite/internal/model"
@@ -16,8 +17,8 @@ func NewTaskService(storage *storage.Storage) *TaskService {
 	return &TaskService{storage: storage}
 }
 
-func (s *TaskService) GetTasks(statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := s.storage.GetTasks(statusFilter)
+func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
+	tasks, err := s.storage.GetTasks(ctx, statusFilter)
 
 	if err != nil {
 		return nil, err
@@ -25,65 +26,65 @@ func (s *TaskService) GetTasks(statusFilter *string) ([]dto.TaskDTO, error) {
 
 	tasksDTO := make([]dto.TaskDTO, len(tasks))
 	for i, task := range tasks {
-		tasksDTO[i] = s.toDTO(task)
+		tasksDTO[i] = s.toDTO(ctx, task)
 	}
 
 	return tasksDTO, nil
 }
 
-func (s *TaskService) GetTaskByID(id int) (dto.TaskDTO, error) {
-	task, err := s.storage.GetTaskByID(id)
+func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, error) {
+	task, err := s.storage.GetTaskByID(ctx, id)
 
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	taskDTO := s.toDTO(*task)
+	taskDTO := s.toDTO(ctx, *task)
 
 	return taskDTO, nil
 }
 
-func (s *TaskService) DeleteTask(taskID int, username string) error {
-	user, err := s.storage.GetUserByUsername(username)
+func (s *TaskService) DeleteTask(ctx context.Context, taskID int, username string) error {
+	user, err := s.storage.GetUserByUsername(ctx, username)
 	if err != nil {
 		return fmt.Errorf("User not found: %w", err)
 	}
 
-	if err := s.storage.DeleteTask(taskID, user.ID); err != nil {
+	if err := s.storage.DeleteTask(ctx, taskID, user.ID); err != nil {
 		return fmt.Errorf("Failed to delete task: %w", err)
 	}
 
 	return nil
 }
 
-func (s *TaskService) ClaimTask(taskID int, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(username)
+func (s *TaskService) ClaimTask(ctx context.Context, taskID int, username string) (dto.TaskDTO, error) {
+	user, err := s.storage.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	if err := s.storage.ClaimTask(taskID, user.ID); err != nil {
+	if err := s.storage.ClaimTask(ctx, taskID, user.ID); err != nil {
 		if strings.Contains(err.Error(), "already claimed") {
 			return dto.TaskDTO{}, fmt.Errorf("Task already claimed: %w", err)
 		}
 		return dto.TaskDTO{}, fmt.Errorf("Failed to claim task: %w", err)
 	}
 
-	task, err := s.storage.GetTaskByID(taskID)
+	task, err := s.storage.GetTaskByID(ctx, taskID)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("Failed to fetch task: %w", err)
 	}
 
-	return s.toDTO(*task), nil
+	return s.toDTO(ctx, *task), nil
 }
 
-func (s *TaskService) CompleteTask(taskID int, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(username)
+func (s *TaskService) CompleteTask(ctx context.Context, taskID int, username string) (dto.TaskDTO, error) {
+	user, err := s.storage.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	task, err := s.storage.CompleteTask(taskID, user.ID)
+	task, err := s.storage.CompleteTask(ctx, taskID, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return dto.TaskDTO{}, fmt.Errorf("Task not found: %w", err)
@@ -94,16 +95,16 @@ func (s *TaskService) CompleteTask(taskID int, username string) (dto.TaskDTO, er
 		return dto.TaskDTO{}, fmt.Errorf("Failed to complete task: %w", err)
 	}
 
-	return s.toDTO(*task), nil
+	return s.toDTO(ctx, *task), nil
 }
 
-func (s *TaskService) UpdateTask(taskID int, req model.UpdateTaskRequest, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(username)
+func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, username string) (dto.TaskDTO, error) {
+	user, err := s.storage.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	task, err := s.storage.UpdateTask(taskID, req, user.ID)
+	task, err := s.storage.UpdateTask(ctx, taskID, req, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "access denied") {
 			return dto.TaskDTO{}, fmt.Errorf("access denied: %w", err)
@@ -114,14 +115,14 @@ func (s *TaskService) UpdateTask(taskID int, req model.UpdateTaskRequest, userna
 		return dto.TaskDTO{}, fmt.Errorf("Failed to update task: %w", err)
 	}
 
-	return s.toDTO(*task), nil
+	return s.toDTO(ctx, *task), nil
 }
 
-func (s *TaskService) toDTO(task model.Task) dto.TaskDTO {
+func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	var taskDTO dto.TaskDTO
 	username := ""
 	if task.UserID != nil {
-		user, err := s.storage.GetUserById(*task.UserID)
+		user, err := s.storage.GetUserById(ctx, *task.UserID)
 		if err == nil {
 			username = user.Username
 		}
