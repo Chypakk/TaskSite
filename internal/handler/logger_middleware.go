@@ -9,21 +9,6 @@ import (
 	"time"
 )
 
-type contextKey string
-
-const loggerKey contextKey = "logger"
-
-func WithLogger(ctx context.Context, logger *logger.Logger) context.Context {
-	return context.WithValue(ctx, loggerKey, logger)
-}
-
-func FromContext(ctx context.Context) *logger.Logger {
-	if l, ok := ctx.Value(loggerKey).(*logger.Logger); ok {
-		return l
-	}
-	return logger.New()
-}
-
 func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqID := generateShortID()
@@ -32,7 +17,7 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 		log := logger.New()
 
 		ctx := context.WithValue(r.Context(), "request_id", reqID)
-		ctx = WithLogger(ctx, log)
+		ctx = logger.WithLogger(ctx, log)
 
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 

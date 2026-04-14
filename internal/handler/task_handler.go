@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"tasksite/internal/logger"
 	"tasksite/internal/model"
 	"tasksite/internal/service"
 	"tasksite/internal/storage"
@@ -36,7 +37,7 @@ func NewTaskHandler(storage *storage.Storage) *TaskHandler {
 // @Router       /tasks [post]
 func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodPost {
 		log.Warn(ctx, "CreateTask: wrong method", "got", r.Method)
@@ -59,7 +60,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.CreateTask(req.Name, req.Description, req.Author)
+	task, err := h.storage.CreateTask(ctx, req.Name, req.Description, req.Author)
 	if err != nil {
 		log.Error(ctx, "CreateTask: storage error", err, "name", req.Name)
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
@@ -84,7 +85,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 // @Router       /tasks [get]
 func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodGet {
 		log.Warn(ctx, "GetTasks: wrong method", "got", r.Method)
@@ -98,7 +99,7 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		statusFilter = &status
 	}
 
-	tasks, err := h.taskService.GetTasks(statusFilter)
+	tasks, err := h.taskService.GetTasks(ctx, statusFilter)
 	if err != nil {
 		log.Error(ctx, "GetTasks: service error", err, "status_filter", statusFilter)
 		http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
@@ -111,7 +112,7 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodGet {
 		log.Warn(ctx, "GetTaskById: wrong method", "got", r.Method)
@@ -127,7 +128,7 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.taskService.GetTaskByID(id)
+	task, err := h.taskService.GetTaskByID(ctx, id)
 	if err != nil {
 		log.Error(ctx, "GetTaskById: service error", err, "task_id", id)
 		http.Error(w, "Failed to get task", http.StatusInternalServerError)
@@ -140,7 +141,7 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodDelete {
 		log.Warn(ctx, "DeleteTask: wrong method", "got", r.Method)
@@ -163,7 +164,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.taskService.DeleteTask(id, username); err != nil {
+	if err := h.taskService.DeleteTask(ctx, id, username); err != nil {
 		errMsg := err.Error()
 
 		// Если юзер не найден — это баг, 500
@@ -191,7 +192,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodPost {
 		log.Warn(ctx, "ClaimTask: wrong method", "got", r.Method)
@@ -214,7 +215,7 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskDTO, err := h.taskService.ClaimTask(taskID, username)
+	taskDTO, err := h.taskService.ClaimTask(ctx, taskID, username)
 	if err != nil {
 		errMsg := err.Error()
 
@@ -242,7 +243,7 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodPost {
 		log.Warn(ctx, "CompleteTask: wrong method", "got", r.Method)
@@ -261,7 +262,7 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Context().Value("username").(string)
 
-	task, err := h.taskService.CompleteTask(taskID, username)
+	task, err := h.taskService.CompleteTask(ctx, taskID, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			log.Warn(ctx, "Task not found ", "task_id", taskID)
@@ -285,7 +286,7 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := FromContext(ctx)
+	log := logger.FromContext(ctx)
 
 	if r.Method != http.MethodPut {
 		log.Warn(ctx, "UpdateTask: wrong method", "got", r.Method)
@@ -310,7 +311,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.taskService.UpdateTask(id, req, username)
+	task, err := h.taskService.UpdateTask(ctx, id, req, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "access denied") {
 			log.Info(ctx, "access denied", "taskId", id, "username", username)
