@@ -339,8 +339,15 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 		updates = append(updates, "author = ?")
 		args = append(args, req.Author)
 	}
+	if req.SolutionComment != "" {
+		updates = append(updates, "solution_comment = ?")
+		args = append(args, req.SolutionComment)
+	}
 	if req.Status != "" {
-		valid := map[string]bool{"open": true, "in_progress": true, "completed": true, "closed": true}
+		valid := map[string]bool{
+			"open": true, "in_progress": true, "completed": true, "closed": true,
+			"has_solution": true,
+	}
 		if !valid[req.Status] {
 			return nil, fmt.Errorf("invalid status value")
 		}
