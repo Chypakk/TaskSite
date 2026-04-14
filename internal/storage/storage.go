@@ -42,6 +42,10 @@ func ConnectDB(dbPath string) (*Storage, error) {
 	return storage, nil
 }
 
+func (s *Storage) Ping() error {
+	return s.db.Ping()
+}
+
 func runMigrations(db *sql.DB) error {
 	driver, err := sqlite.WithInstance(db, &sqlite.Config{})
 	if err != nil {

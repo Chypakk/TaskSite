@@ -9,6 +9,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -38,53 +39,66 @@ func main() {
 
 	sessionStore := userHandler.GetSessionStore()
 
-	http.HandleFunc("/api/register", userHandler.Register)
-	http.HandleFunc("/api/login", userHandler.Login)
-	http.HandleFunc("/api/me", userHandler.GetMe)
-	http.HandleFunc("/api/logout", sessionStore.AuthMiddleware(userHandler.Logout))
+	http.HandleFunc("/api/register", handler.RequestLogger(userHandler.Register))
+	http.HandleFunc("/api/login", handler.RequestLogger(userHandler.Login))
+	http.HandleFunc("/api/me", handler.RequestLogger(userHandler.GetMe))
+	http.HandleFunc("/api/logout", sessionStore.AuthMiddleware(handler.RequestLogger(userHandler.Logout)))
 
-	http.HandleFunc("/api/tasks", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			taskHandler.GetTasks(w, r)
-		case http.MethodPost:
-			taskHandler.CreateTask(w, r)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		}
-	}))
+	http.HandleFunc("/api/tasks", sessionStore.AuthMiddleware(handler.RequestLogger(
+		func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodGet:
+				taskHandler.GetTasks(w, r)
+			case http.MethodPost:
+				taskHandler.CreateTask(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})))
 
-	http.HandleFunc("/api/tasks/", sessionStore.AuthMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		path := r.URL.Path
-		if strings.HasSuffix(path, "/claim") && r.Method == http.MethodPost {
-			taskHandler.ClaimTask(w, r)
-			return
-		}
+	http.HandleFunc("/api/tasks/", sessionStore.AuthMiddleware(
+		handler.RequestLogger(func(w http.ResponseWriter, r *http.Request) {
+			path := r.URL.Path
+			if strings.HasSuffix(path, "/claim") && r.Method == http.MethodPost {
+				taskHandler.ClaimTask(w, r)
+				return
+			}
 
-		if strings.HasSuffix(path, "/complete") && r.Method == http.MethodPost {
-			taskHandler.CompleteTask(w, r)
-			return
-		}
+			if strings.HasSuffix(path, "/complete") && r.Method == http.MethodPost {
+				taskHandler.CompleteTask(w, r)
+				return
+			}
 
-		switch r.Method {
-		case http.MethodGet:
-			taskHandler.GetTaskById(w, r)
-			return
-		case http.MethodDelete:
-			taskHandler.DeleteTask(w, r)
-			return
-		case http.MethodPut:
-			taskHandler.UpdateTask(w, r)
-		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-	}))
+			switch r.Method {
+			case http.MethodGet:
+				taskHandler.GetTaskById(w, r)
+				return
+			case http.MethodDelete:
+				taskHandler.DeleteTask(w, r)
+				return
+			case http.MethodPut:
+				taskHandler.UpdateTask(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+		})))
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
 	}
+
+	http.HandleFunc("/health", handler.RequestLogger(
+		func(w http.ResponseWriter, r *http.Request) {
+			if err := storage.Ping(); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(map[string]string{"status": "unhealthy", "error": err.Error()})
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		}))
 
 	http.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
