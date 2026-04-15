@@ -333,3 +333,23 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(task)
 
 }
+
+func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    log := logger.FromContext(ctx)
+    
+    var statusFilter *string
+    if s := r.URL.Query().Get("status"); s != "" {
+        statusFilter = &s
+    }
+    
+    tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
+    if err != nil {
+        log.Error(ctx, "GetUngroupedTasks: service error", err)
+        http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
+        return
+    }
+    
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(tasks)
+}

@@ -114,7 +114,7 @@ func (s *Storage) CreateTask(ctx context.Context, name, description, author stri
 func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.Task, error) {
 	start := time.Now()
 
-	query := "SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE 1=1"
+	query := "SELECT id, user_id, name, description, author, status, group_id, solution_comment, created_at, updated_at, completed_at FROM tasks WHERE 1=1"
 	var args []any
 
 	if statusFilter != nil {
@@ -138,7 +138,7 @@ func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.T
 		var task model.Task
 		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &task.GroupID, &task.SolutionComment, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
 			return nil, err
 		}
 
@@ -381,6 +381,63 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	}
 
 	return s.GetTaskByID(ctx, taskID)
+}
+
+func (s *Storage) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]model.Task, error) {
+    start := time.Now()
+    query := `SELECT id, user_id, name, description, author, status, group_id, 
+                     solution_comment, created_at, updated_at, completed_at 
+              FROM tasks WHERE group_id IS NULL`
+    var args []any
+    
+    if statusFilter != nil {
+        query += " AND status = ?"
+        args = append(args, *statusFilter)
+    }
+    query += " ORDER BY created_at DESC"
+    
+    rows, err := s.db.Query(query, args...)
+    duration := time.Since(start)
+    s.logDBOp(ctx, "get_ungrouped_tasks", duration, err, "status_filter", statusFilter)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    
+    tasks := make([]model.Task, 0)
+	for rows.Next() {
+		var task model.Task
+		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
+
+		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
+			return nil, err
+		}
+
+		if createdAtStr.Valid {
+			task.CreatedAt, err = parseTime(createdAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse created_at: %w", err)
+			}
+		}
+
+		if completedAtStr.Valid {
+			task.CompletedAt, err = parseTime(completedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
+		}
+
+		if updatedAtStr.Valid {
+			task.UpdatedAt, err = parseTime(updatedAtStr)
+			if err != nil {
+				return nil, fmt.Errorf("parse completed_at: %w", err)
+			}
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
 }
 
 // Close закрывает подключение к БД

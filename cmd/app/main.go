@@ -36,6 +36,7 @@ func main() {
 
 	taskHandler := handler.NewTaskHandler(storage)
 	userHandler := handler.NewUserHandler(storage)
+	groupHandler := handler.NewTaskGroupHandler(storage)
 
 	sessionStore := userHandler.GetSessionStore()
 
@@ -59,6 +60,10 @@ func main() {
 	http.HandleFunc("/api/tasks/", sessionStore.AuthMiddleware(
 		handler.RequestLogger(func(w http.ResponseWriter, r *http.Request) {
 			path := r.URL.Path
+			if strings.HasSuffix(r.URL.Path, "/group") && r.Method == http.MethodPut {
+				groupHandler.AssignTaskToGroup(w, r)
+				return
+			}
 			if strings.HasSuffix(path, "/claim") && r.Method == http.MethodPost {
 				taskHandler.ClaimTask(w, r)
 				return
@@ -82,6 +87,36 @@ func main() {
 				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 				return
 			}
+		})))
+
+	http.HandleFunc("/api/tasks/ungrouped", sessionStore.AuthMiddleware(
+		handler.RequestLogger(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			taskHandler.GetUngroupedTasks(w, r)
+		})))
+
+	http.HandleFunc("/api/groups", sessionStore.AuthMiddleware(handler.RequestLogger(
+		func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case http.MethodPost:
+				groupHandler.CreateGroup(w, r)
+			case http.MethodGet:
+				groupHandler.GetGroups(w, r)
+			default:
+				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			}
+		})))
+
+	http.HandleFunc("/api/groups/", sessionStore.AuthMiddleware(handler.RequestLogger(
+		func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/tasks") && r.Method == http.MethodGet {
+				groupHandler.GetGroupTasks(w, r)
+				return
+			}
+			http.Error(w, "Not found", http.StatusNotFound)
 		})))
 
 	port := os.Getenv("PORT")

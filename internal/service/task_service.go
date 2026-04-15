@@ -118,6 +118,18 @@ func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.Upda
 	return s.toDTO(ctx, *task), nil
 }
 
+func (s *TaskService) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
+    tasks, err := s.storage.GetUngroupedTasks(ctx, statusFilter)
+    if err != nil {
+        return nil, err
+    }
+    dtos := make([]dto.TaskDTO, len(tasks))
+    for i, t := range tasks {
+        dtos[i] = s.toDTO(ctx, t)
+    }
+    return dtos, nil
+}
+
 func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	var taskDTO dto.TaskDTO
 	username := ""
