@@ -132,55 +132,22 @@ func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.T
 		return nil, err
 	}
 	defer rows.Close()
-//
-	tasks := make([]model.Task, 0)
-	for rows.Next() {
-		var task model.Task
-		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
-
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &task.GroupID, &task.SolutionComment, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
-			return nil, err
-		}
-
-		if createdAtStr.Valid {
-			task.CreatedAt, err = parseTime(createdAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse created_at: %w", err)
-			}
-		}
-
-		if completedAtStr.Valid {
-			task.CompletedAt, err = parseTime(completedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		if updatedAtStr.Valid {
-			task.UpdatedAt, err = parseTime(updatedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		tasks = append(tasks, task)
-	}
-
-	return tasks, nil
+	
+	return s.scanTasks(rows)
 }
 
 func (s *Storage) GetTaskByID(ctx context.Context, taskID int) (*model.Task, error) {
 	start := time.Now()
 
 	row := s.db.QueryRow(
-		"SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at FROM tasks WHERE id = ?",
+		"SELECT id, user_id, name, description, author, status, group_id, solution_comment, created_at, updated_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
 	)
 
 	var task model.Task
 	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
 
-	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &task.GroupID, &task.SolutionComment, &createdAtStr, &updatedAtStr, &completedAtStr)
 
 	duration := time.Since(start)
 	s.logDBOp(ctx, "get_task_by_id", duration, err, "task_id", taskID)
@@ -308,7 +275,7 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	var task model.Task
 	var createdAtStr, completedAtStr sql.NullString
 	err := s.db.QueryRow(
-		"SELECT id, user_id, name, description, author, status, created_at, completed_at FROM tasks WHERE id = ?",
+		"SELECT id, user_id, name, description, author, status, solution_comment, created_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
 	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
 		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
@@ -404,40 +371,7 @@ func (s *Storage) GetUngroupedTasks(ctx context.Context, statusFilter *string) (
     }
     defer rows.Close()
     
-    tasks := make([]model.Task, 0)
-	for rows.Next() {
-		var task model.Task
-		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
-
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
-			return nil, err
-		}
-
-		if createdAtStr.Valid {
-			task.CreatedAt, err = parseTime(createdAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse created_at: %w", err)
-			}
-		}
-
-		if completedAtStr.Valid {
-			task.CompletedAt, err = parseTime(completedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		if updatedAtStr.Valid {
-			task.UpdatedAt, err = parseTime(updatedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		tasks = append(tasks, task)
-	}
-
-	return tasks, nil
+	return s.scanTasks(rows)
 }
 
 // Close закрывает подключение к БД
@@ -620,39 +554,8 @@ func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter
         return nil, err
     }
     defer rows.Close()
-	tasks := make([]model.Task, 0)
-	for rows.Next() {
-		var task model.Task
-		var createdAtStr, completedAtStr, updatedAtStr sql.NullString
-
-		if err := rows.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr); err != nil {
-			return nil, err
-		}
-
-		if createdAtStr.Valid {
-			task.CreatedAt, err = parseTime(createdAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse created_at: %w", err)
-			}
-		}
-
-		if completedAtStr.Valid {
-			task.CompletedAt, err = parseTime(completedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		if updatedAtStr.Valid {
-			task.UpdatedAt, err = parseTime(updatedAtStr)
-			if err != nil {
-				return nil, fmt.Errorf("parse completed_at: %w", err)
-			}
-		}
-
-		tasks = append(tasks, task)
-	}
-    return tasks, nil
+	
+    return s.scanTasks(rows)
 }
 
 func parseTime(nullStr sql.NullString) (time.Time, error) {
@@ -669,4 +572,34 @@ func (s *Storage) logDBOp(ctx context.Context, opName string, duration time.Dura
 	} else {
 		log.Info(ctx, fmt.Sprintf("DB: %s", opName), append([]any{"duration", duration}, args...)...)
 	}
+}
+
+func (s *Storage) scanTasks(rows *sql.Rows) ([]model.Task, error) {
+    tasks := make([]model.Task, 0)
+    for rows.Next() {
+        var t model.Task
+        var createdAtStr, updatedAtStr, completedAtStr sql.NullString
+        
+        err := rows.Scan(
+            &t.ID, &t.UserID, &t.Name, &t.Description, &t.Author,
+            &t.Status, &t.GroupID, &t.SolutionComment,
+            &createdAtStr, &updatedAtStr, &completedAtStr,
+        )
+        if err != nil {
+            return nil, err
+        }
+        
+        if createdAtStr.Valid {
+            t.CreatedAt, _ = parseTime(createdAtStr)
+        }
+        if updatedAtStr.Valid {
+            t.UpdatedAt, _ = parseTime(updatedAtStr)
+        }
+        if completedAtStr.Valid {
+            t.CompletedAt, _ = parseTime(completedAtStr)
+        }
+        
+        tasks = append(tasks, t)
+    }
+    return tasks, nil
 }
