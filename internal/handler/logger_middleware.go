@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func RequestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqID := generateShortID()
 		start := time.Now()
 
@@ -21,7 +21,7 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 
 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		next(rw, r.WithContext(ctx))
+		next.ServeHTTP(rw, r.WithContext(ctx))
 
 		log.Info(ctx, "request_completed",
 			"req_id", reqID,
@@ -29,7 +29,7 @@ func RequestLogger(next http.HandlerFunc) http.HandlerFunc {
 			"path", r.URL.Path,
 			"status", rw.statusCode,
 			"duration", time.Since(start))
-	}
+	})
 }
 
 type responseWriter struct {

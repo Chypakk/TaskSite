@@ -70,8 +70,8 @@ func generateToken() string {
 	return hex.EncodeToString(bytes)
 }
 
-func (s *SessionStore) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (s *SessionStore) AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("X-Session-Token")
 		if token == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -85,6 +85,6 @@ func (s *SessionStore) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		ctx := context.WithValue(r.Context(), "username", username)
-		next(w, r.WithContext(ctx))
-	}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
