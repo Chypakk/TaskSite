@@ -20,16 +20,4 @@ type LoginResponse struct {
 	ID       int    `json:"id" example:"1"`
 }
 
-// CreateTaskRequest запрос создания задачи
-type CreateTaskRequest struct {
-	Name        string `json:"name" example:"Задача 1"`
-	Description string `json:"description" example:"Описание"`
-	Author      string `json:"author" example:"Пользователь1"`
-}
 
-type UpdateTaskRequest struct {
-	Name        string `json:"name,omitempty" example:"Задача 1"`
-	Description string `json:"description,omitempty" example:"Описание"`
-	Author      string `json:"author,omitempty" example:"Пользователь1"`
-	Status      string `json:"status,omitempty" example:"open"`
-}
