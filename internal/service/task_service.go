@@ -13,6 +13,11 @@ type TaskService struct {
 	storage *storage.Storage
 }
 
+type PaginatedTasksResponse struct {
+	Tasks      []dto.TaskDTO        `json:"tasks"`
+	Pagination model.PaginationMeta `json:"pagination"`
+}
+
 func NewTaskService(storage *storage.Storage) *TaskService {
 	return &TaskService{storage: storage}
 }
@@ -30,6 +35,32 @@ func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto
 	}
 
 	return tasksDTO, nil
+}
+
+func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.PaginationQuery, groupID *int) (PaginatedTasksResponse, error) {
+    pq.Validate()
+    
+    total, err := s.storage.CountTasks(ctx, 
+        func() *string { if pq.Status != "" { return &pq.Status }; return nil }(), 
+        groupID)
+    if err != nil {
+        return PaginatedTasksResponse{}, fmt.Errorf("failed to count tasks: %w", err)
+    }
+    
+    tasks, err := s.storage.GetTasksPaginated(ctx, pq, groupID)
+    if err != nil {
+        return PaginatedTasksResponse{}, fmt.Errorf("failed to get tasks: %w", err)
+    }
+    
+    dtos := make([]dto.TaskDTO, len(tasks))
+    for i, t := range tasks {
+        dtos[i] = s.toDTO(ctx, t)
+    }
+    
+    return PaginatedTasksResponse{
+        Tasks:      dtos,
+        Pagination: model.NewPaginationMeta(pq.Page, pq.Limit, total),
+    }, nil
 }
 
 func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, error) {
@@ -119,15 +150,15 @@ func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.Upda
 }
 
 func (s *TaskService) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
-    tasks, err := s.storage.GetUngroupedTasks(ctx, statusFilter)
-    if err != nil {
-        return nil, err
-    }
-    dtos := make([]dto.TaskDTO, len(tasks))
-    for i, t := range tasks {
-        dtos[i] = s.toDTO(ctx, t)
-    }
-    return dtos, nil
+	tasks, err := s.storage.GetUngroupedTasks(ctx, statusFilter)
+	if err != nil {
+		return nil, err
+	}
+	dtos := make([]dto.TaskDTO, len(tasks))
+	for i, t := range tasks {
+		dtos[i] = s.toDTO(ctx, t)
+	}
+	return dtos, nil
 }
 
 func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
