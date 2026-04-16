@@ -39,16 +39,16 @@ func main() {
 	}
 	defer storage.Close()
 
-	taskHandler := handler.NewTaskHandler(storage)
+	wsHub := ws.NewHub()
+	go wsHub.Run(context.Background())
+
+	taskHandler := handler.NewTaskHandler(storage, wsHub)
 	userHandler := handler.NewUserHandler(storage)
 	groupHandler := handler.NewTaskGroupHandler(storage)
 
 	sessionStore := userHandler.GetSessionStore()
 
-	wsHub := ws.NewHub()
-	go wsHub.Run(context.Background())
-
-	wsHandler := handler.NewWSHandler(wsHub, sessionStore)
+	// wsHandler := handler.NewWSHandler(wsHub, sessionStore)
 
 	r := chi.NewRouter()
 
@@ -58,7 +58,7 @@ func main() {
 	r.Post("/api/login", userHandler.Login)
 	r.Post("/api/me", userHandler.GetMe)
 	
-	r.Get("/api/ws", wsHandler.ServeWS)
+	// r.Get("/api/ws", wsHandler.ServeWS)
 
 	r.Group(func(r chi.Router) {
 		r.Use(handler.RequestLogger)

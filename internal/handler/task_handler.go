@@ -9,17 +9,20 @@ import (
 	"tasksite/internal/model"
 	"tasksite/internal/service"
 	"tasksite/internal/storage"
+	"tasksite/internal/ws"
 )
 
 type TaskHandler struct {
 	taskService *service.TaskService
 	storage     *storage.Storage
+	wsHub       *ws.Hub
 }
 
-func NewTaskHandler(storage *storage.Storage) *TaskHandler {
+func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
 		taskService: service.NewTaskService(storage),
 		storage:     storage,
+		wsHub: wsHub,
 	}
 }
 
@@ -66,6 +69,8 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
 		return
 	}
+
+	sendEvent(h.wsHub, ws.EventTaskCreated, task)
 
 	log.Info(ctx, "CreateTask: success", "task_id", task.ID)
 
@@ -187,6 +192,8 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int {"id": id})
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -236,6 +243,8 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskClaimed, taskDTO)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(taskDTO)
@@ -278,6 +287,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to complete task", http.StatusInternalServerError)
 		return
 	}
+
+	sendEvent(h.wsHub, ws.EventTaskCompleted, task)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -328,6 +339,8 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskUpdated, task)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(task)
@@ -335,21 +348,21 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    log := logger.FromContext(ctx)
-    
-    var statusFilter *string
-    if s := r.URL.Query().Get("status"); s != "" {
-        statusFilter = &s
-    }
-    
-    tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
-    if err != nil {
-        log.Error(ctx, "GetUngroupedTasks: service error", err)
-        http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
-        return
-    }
-    
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(tasks)
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+
+	var statusFilter *string
+	if s := r.URL.Query().Get("status"); s != "" {
+		statusFilter = &s
+	}
+
+	tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
+	if err != nil {
+		log.Error(ctx, "GetUngroupedTasks: service error", err)
+		http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
 }
