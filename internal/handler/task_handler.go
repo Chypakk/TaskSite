@@ -9,17 +9,22 @@ import (
 	"tasksite/internal/model"
 	"tasksite/internal/service"
 	"tasksite/internal/storage"
+	"tasksite/internal/ws"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type TaskHandler struct {
 	taskService *service.TaskService
 	storage     *storage.Storage
+	wsHub       *ws.Hub
 }
 
-func NewTaskHandler(storage *storage.Storage) *TaskHandler {
+func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
 		taskService: service.NewTaskService(storage),
 		storage:     storage,
+		wsHub: wsHub,
 	}
 }
 
@@ -67,6 +72,8 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskCreated, task)
+
 	log.Info(ctx, "CreateTask: success", "task_id", task.ID)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -92,6 +99,28 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	if r.URL.Query().Get("page") != "" || r.URL.Query().Get("limit") != "" {
+        pq := parsePagination(r)
+        
+        var groupID *int
+        if groupParam := chi.URLParam(r, "id"); groupParam != "" {
+            if gid, err := strconv.Atoi(groupParam); err == nil {
+                groupID = &gid
+            }
+        }
+        
+        resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
+        if err != nil {
+            log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
+            http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+            return
+        }
+        
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(resp)
+        return
+    }
 
 	var statusFilter *string
 
@@ -187,6 +216,8 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int {"id": id})
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -236,6 +267,8 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskClaimed, taskDTO)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(taskDTO)
@@ -278,6 +311,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to complete task", http.StatusInternalServerError)
 		return
 	}
+
+	sendEvent(h.wsHub, ws.EventTaskCompleted, task)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -328,6 +363,8 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sendEvent(h.wsHub, ws.EventTaskUpdated, task)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(task)
@@ -335,21 +372,41 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) {
-    ctx := r.Context()
-    log := logger.FromContext(ctx)
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+
+	var statusFilter *string
+	if s := r.URL.Query().Get("status"); s != "" {
+		statusFilter = &s
+	}
+
+	tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
+	if err != nil {
+		log.Error(ctx, "GetUngroupedTasks: service error", err)
+		http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tasks)
+}
+
+func parsePagination(r *http.Request) model.PaginationQuery {
+    pq := model.DefaultPagination()
     
-    var statusFilter *string
-    if s := r.URL.Query().Get("status"); s != "" {
-        statusFilter = &s
+    if page := r.URL.Query().Get("page"); page != "" {
+        if p, err := strconv.Atoi(page); err == nil {
+            pq.Page = p
+        }
     }
-    
-    tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
-    if err != nil {
-        log.Error(ctx, "GetUngroupedTasks: service error", err)
-        http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
-        return
+    if limit := r.URL.Query().Get("limit"); limit != "" {
+        if l, err := strconv.Atoi(limit); err == nil {
+            pq.Limit = l
+        }
     }
+    pq.Status = r.URL.Query().Get("status")
+    pq.Sort = r.URL.Query().Get("sort")
     
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(tasks)
+    pq.Validate()
+    return pq
 }
