@@ -273,18 +273,22 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	start := time.Now()
 
 	var task model.Task
-	var createdAtStr, completedAtStr sql.NullString
+	var createdAtStr, completedAtStr, solutionComment sql.NullString
 	err := s.db.QueryRow(
 		"SELECT id, user_id, name, description, author, status, solution_comment, created_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
-	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
-		&task.Author, &task.Status, &createdAtStr, &completedAtStr)
+	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description, 
+		&task.Author, &task.Status, &solutionComment, &createdAtStr, &completedAtStr)
+
+	if solutionComment.Valid {
+		task.SolutionComment = &solutionComment.String
+	}
 
 	duration := time.Since(start)
 	s.logDBOp(ctx, "update_task", duration, err, "task_id", taskID, "user_id", editorID)
 
 	if err != nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, err
 	}
 
 	if task.UserID != nil && *task.UserID != editorID {
@@ -534,7 +538,7 @@ func (s *Storage) GetUserById(ctx context.Context, id int) (*model.User, error) 
 func (s *Storage) CreateTaskGroup(ctx context.Context, name, description string) (*model.TaskGroup, error) {
 	start := time.Now()
 	res, err := s.db.Exec(
-		"INSERT INTO task_groups (name, description) VALUES (?, ?)",
+		"INSERT INTO task_group (name, description) VALUES (?, ?)",
 		name, description,
 	)
 	duration := time.Since(start)
@@ -556,9 +560,9 @@ func (s *Storage) CreateTaskGroup(ctx context.Context, name, description string)
 
 func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) {
 	start := time.Now()
-	rows, err := s.db.Query("SELECT id, name, description, created_at FROM task_groups ORDER BY name")
+	rows, err := s.db.Query("SELECT id, name, description, created_at FROM task_group ORDER BY name")
 	duration := time.Since(start)
-	s.logDBOp(ctx, "get_task_groups", duration, err)
+	s.logDBOp(ctx, "get_task_group", duration, err)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +586,7 @@ func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) 
 func (s *Storage) AssignTaskToGroup(ctx context.Context, taskID, groupID int) error {
 	start := time.Now()
 	var exists int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM task_groups WHERE id = ?", groupID).Scan(&exists)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM task_group WHERE id = ?", groupID).Scan(&exists)
 	if err != nil || exists == 0 {
 		return fmt.Errorf("group not found")
 	}

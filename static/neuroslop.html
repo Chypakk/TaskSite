@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TaskSite • Terminal UI</title>
+  <style>
+    :root {
+      --bg: #0d1117; --fg: #c9d1d9; --accent: #58a6ff;
+      --success: #3fb950; --warn: #d29922; --danger: #f85149;
+      --border: #30363d; --input-bg: #161b22;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      background: var(--bg); color: var(--fg);
+      line-height: 1.5; padding: 1rem; max-width: 1200px; margin: 0 auto;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    
+    /* Утилиты */
+    .hidden { display: none !important; }
+    .btn {
+      background: var(--input-bg); border: 1px solid var(--border);
+      color: var(--fg); padding: 0.4rem 0.8rem; border-radius: 6px;
+      cursor: pointer; transition: all 0.2s; font-family: inherit; font-size: 0.9rem;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; border: none; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: var(--danger); color: #fff; border: none; }
+    .btn-danger:hover { opacity: 0.9; }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+    
+    /* Формы */
+    input, select, textarea {
+      width: 100%; padding: 0.5rem; margin: 0.3rem 0;
+      background: var(--input-bg); border: 1px solid var(--border);
+      color: var(--fg); border-radius: 4px; font-family: inherit;
+    }
+    input:focus, textarea:focus, select:focus { 
+      outline: none; border-color: var(--accent); 
+    }
+    
+    /* Карточки */
+    .card {
+      background: var(--input-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+    }
+    .task-card {
+      border-left: 3px solid var(--accent);
+      transition: transform 0.2s, box-shadow 0.2s;
+      animation: fadeIn 0.3s ease;
+    }
+    .task-card:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .task-card.updated {
+      animation: highlight 1s ease;
+    }
+    .task-card.completed { border-left-color: var(--success); opacity: 0.85; }
+    .task-card.in_progress { border-left-color: var(--warn); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes highlight { 0% { background: rgba(88,166,255,0.3); } 100% { background: transparent; } }
+    
+    /* Сетка */
+    .grid { display: grid; gap: 1rem; }
+    @media (min-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+      .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    }
+    
+    /* Тосты */
+    #toast-container {
+      position: fixed; bottom: 1rem; right: 1rem; z-index: 1000;
+    }
+    .toast {
+      background: var(--input-bg); border-left: 4px solid var(--accent);
+      padding: 0.75rem 1rem; margin-top: 0.5rem; border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: slideIn 0.3s ease;
+      max-width: 320px; font-size: 0.9rem; word-wrap: break-word;
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warn { border-left-color: var(--warn); }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Хедер */
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 1rem; border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .logo { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
+    
+    /* Модалки */
+    .modal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 1rem;
+    }
+    .modal-content {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1.5rem; width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    
+    /* Статусы */
+    .status-badge {
+      display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px;
+      font-size: 0.75rem; font-weight: 500; text-transform: uppercase;
+    }
+    .status-open { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .status-in_progress { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .status-completed { background: rgba(63,185,80,0.15); color: var(--success); }
+    
+    /* Лоадер */
+    .loader {
+      border: 2px solid var(--border); border-top: 2px solid var(--accent);
+      border-radius: 50%; width: 1rem; height: 1rem;
+      animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;
+    }
+    @keyframes spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+    
+    /* Пустое состояние */
+    .empty-state {
+      text-align: center; padding: 2rem; opacity: 0.7;
+    }
+    .empty-state h4 { margin-bottom: 0.5rem; }
+    
+    /* Группа бейдж */
+    .group-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(139,92,246,0.15); color: #a78bfa;
+      padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;
+    }
+    
+    /* Скроллбар */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+  <!-- Хедер -->
+  <header id="app-header" class="hidden">
+    <div class="logo">⚡ TaskSite</div>
+    <div style="display:flex; align-items:center; gap:1rem;">
+      <span id="user-greeting" style="opacity:0.9;"></span>
+      <button class="btn btn-sm" onclick="app.logout()">[logout]</button>
+    </div>
+  </header>
+
+  <!-- Авторизация -->
+  <div id="auth-section" class="card">
+    <h2 style="margin-bottom:1rem;">🔐 Доступ</h2>
+    <div class="grid grid-2">
+      <div>
+        <h3 style="margin-bottom:0.5rem;">Вход</h3>
+        <input id="login-username" placeholder="username" autocomplete="username" />
+        <input id="login-password" type="password" placeholder="password" autocomplete="current-password" />
+        <button class="btn btn-primary" onclick="app.login()" style="margin-top:0.5rem;">Войти</button>
+      </div>
+      <div>
+        <h3 style="margin-bottom:0.5rem;">Регистрация</h3>
+        <input id="reg-username" placeholder="новый username" autocomplete="new-username" />
+        <input id="reg-password" type="password" placeholder="пароль" autocomplete="new-password" />
+        <button class="btn" onclick="app.register()" style="margin-top:0.5rem;">Создать аккаунт</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Дашборд -->
+  <div id="dashboard" class="hidden">
+    <!-- Фильтры -->
+    <div class="card">
+      <div class="grid grid-3" style="align-items:end;">
+        <div>
+          <label style="font-size:0.85rem; opacity:0.8;">Статус</label>
+          <select id="filter-status" onchange="app.loadTasks()">
+            <option value="">Все статусы</option>
+            <option value="open">Открытые</option>
+            <option value="in_progress">В работе</option>
+            <option value="completed">Завершённые</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.85rem; opacity:0.8;">Группа</label>
+          <select id="filter-group" onchange="app.loadTasks()">
+            <option value="">Все группы</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.85rem; opacity:0.8;">&nbsp;</label>
+          <button class="btn btn-primary" onclick="app.openTaskModal()" style="width:100%;">+ Новая задача</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Список задач -->
+    <div id="tasks-container"></div>
+
+    <!-- Группы -->
+    <div class="card">
+      <h3 style="margin-bottom:1rem;">📁 Группы задач</h3>
+      <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <input id="new-group-name" placeholder="Название группы *" style="flex:1; min-width:150px;" />
+        <input id="new-group-desc" placeholder="Описание" style="flex:2; min-width:200px;" />
+        <button class="btn btn-primary" onclick="app.createGroup()">Создать</button>
+      </div>
+      <div id="groups-list"></div>
+    </div>
+  </div>
+
+  <!-- Модалка задачи -->
+  <div id="task-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="task-modal-title" style="margin-bottom:1rem;">Новая задача</h3>
+      <input type="hidden" id="task-id" />
+      
+      <label style="font-size:0.85rem; opacity:0.8;">Название *</label>
+      <input id="task-name" placeholder="Что нужно сделать?" required />
+      
+      <label style="font-size:0.85rem; opacity:0.8; margin-top:0.5rem;">Описание</label>
+      <textarea id="task-desc" placeholder="Детали, контекст, ссылки..." rows="3"></textarea>
+      
+      <label style="font-size:0.85rem; opacity:0.8; margin-top:0.5rem;">Группа</label>
+      <select id="task-group">
+        <option value="">Без группы</option>
+      </select>
+      
+      <div style="display:flex; gap:0.5rem; margin-top:1.5rem; justify-content:flex-end; flex-wrap:wrap;">
+        <button class="btn" onclick="app.closeTaskModal()">Отмена</button>
+        <button class="btn btn-danger hidden" id="task-delete-btn" onclick="app.deleteCurrentTask()">Удалить</button>
+        <button class="btn btn-primary" onclick="app.saveTask()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Тосты -->
+  <div id="toast-container"></div>
+
+  <script>
+    // === Конфигурация ===
+    const API = {
+      base: '/api',
+      ws: '/api/ws',
+      token: () => localStorage.getItem('session_token')
+    };
+
+    // === Приложение ===
+    const app = {
+      user: null,
+      ws: null,
+      tasks: [],
+      groups: [],
+
+      init() {
+        const token = API.token();
+        if (token) {
+          this.fetchMe(token);
+        }
+        // Горячие клавиши
+        document.addEventListener('keydown', e => {
+          if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+          if (e.key === 'n') { e.preventDefault(); this.openTaskModal(); }
+          if (e.key === 'l') { e.preventDefault(); this.logout(); }
+          if (e.key === 'Escape') { this.closeTaskModal(); }
+        });
+      },
+
+      // === Авторизация ===
+      async fetchMe(token) {
+        try {
+          const res = await fetch(`${API.base}/me`, {
+            method: 'POST',
+            headers: { 'X-Session-Token': token, 'Content-Type': 'application/json' }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            this.user = data;
+            this.showDashboard();
+            await Promise.all([this.loadTasks(), this.loadGroups()]);
+            this.connectWS(token);
+          } else {
+            localStorage.removeItem('session_token');
+            this.toast('Сессия истекла', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          this.toast('Ошибка подключения к серверу', 'error');
+        }
+      },
+
+      async login() {
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!username || !password) return this.toast('Заполните все поля', 'error');
+
+        try {
+          const res = await fetch(`${API.base}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            localStorage.setItem('session_token', data.token);
+            this.user = data;
+            this.showDashboard();
+            await Promise.all([this.loadTasks(), this.loadGroups()]);
+            this.connectWS(data.token);
+            this.toast(`Добро пожаловать, ${data.username}!`, 'success');
+          } else {
+            this.toast(data.message || 'Неверные данные', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      async register() {
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        if (!username || !password) return this.toast('Заполните все поля', 'error');
+
+        try {
+          const res = await fetch(`${API.base}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            localStorage.setItem('session_token', data.token);
+            this.user = data;
+            this.showDashboard();
+            await Promise.all([this.loadTasks(), this.loadGroups()]);
+            this.connectWS(data.token);
+            this.toast('Аккаунт создан!', 'success');
+          } else {
+            this.toast(data.message || 'Ошибка регистрации', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      logout() {
+        const token = API.token();
+        if (token) {
+          fetch(`${API.base}/logout`, {
+            method: 'POST',
+            headers: { 'X-Session-Token': token }
+          }).catch(()=>{});
+        }
+        localStorage.removeItem('session_token');
+        this.user = null;
+        if (this.ws) this.ws.close();
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('dashboard').classList.add('hidden');
+        document.getElementById('app-header').classList.add('hidden');
+        this.toast('Вы вышли из системы');
+      },
+
+      showDashboard() {
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('app-header').classList.remove('hidden');
+        document.getElementById('user-greeting').textContent = `@${this.user.username}`;
+      },
+
+      // === Задачи ===
+      async loadTasks() {
+        const status = document.getElementById('filter-status').value;
+        const groupId = document.getElementById('filter-group').value;
+        
+        let url = `${API.base}/tasks?`;
+        if (status) url += `status=${status}&`;
+        // group_id фильтр — если нужно, можно добавить на бэке
+        
+        try {
+          const res = await fetch(url, {
+            headers: { 'X-Session-Token': API.token() }
+          });
+          if (res.ok) {
+            const newTasks = await res.json();
+            // Анимация обновлений
+            const oldIds = new Set(this.tasks.map(t => t.id));
+            this.tasks = newTasks;
+            this.renderTasks();
+            // Подсветка новых/изменённых
+            newTasks.forEach(t => {
+              if (!oldIds.has(t.id)) {
+                const el = document.querySelector(`.task-card[data-id="${t.id}"]`);
+                if (el) el.classList.add('updated');
+              }
+            });
+          }
+        } catch (e) {
+          this.toast('Не удалось загрузить задачи', 'error');
+        }
+      },
+
+      renderTasks() {
+        const container = document.getElementById('tasks-container');
+        if (this.tasks.length === 0) {
+          container.innerHTML = `
+            <div class="card empty-state">
+              <h4>📭 Задач пока нет</h4>
+              <p style="opacity:0.7; margin-top:0.5rem;">Создай первую задачу или измени фильтры</p>
+            </div>`;
+          return;
+        }
+        container.innerHTML = this.tasks.map(task => {
+          const isOwner = task.username === this.user?.username || !task.username;
+          const canEdit = isOwner || task.author === this.user?.username;
+          return `
+          <div class="card task-card ${task.status}" data-id="${task.id}">
+            <div style="display:flex; justify-content:space-between; align-items:start; gap:1rem;">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                  <strong style="font-size:1.05rem;">${this.escape(task.name)}</strong>
+                  ${task.group_name ? `<span class="group-badge">📁 ${this.escape(task.group_name)}</span>` : ''}
+                </div>
+                <div style="font-size:0.9rem; opacity:0.85; margin:0.4rem 0; word-break:break-word;">
+                  ${task.description ? this.escape(task.description) : '<em style="opacity:0.6">без описания</em>'}
+                </div>
+                <div style="font-size:0.8rem; opacity:0.7; display:flex; gap:0.75rem; flex-wrap:wrap;">
+                  <span>👤 ${this.escape(task.author)}</span>
+                  ${task.username ? `<span>🔧 ${this.escape(task.username)}</span>` : '<span>🔓 не назначена</span>'}
+                  ${task.group_name ? `<span>📦 ${this.escape(task.group_name)}</span>` : ''}
+                </div>
+              </div>
+              <span class="status-badge status-${task.status}">${this.formatStatus(task.status)}</span>
+            </div>
+            <div style="margin-top:0.85rem; display:flex; gap:0.4rem; flex-wrap:wrap;">
+              ${task.status === 'open' ? 
+                `<button class="btn btn-sm" onclick="app.claimTask(${task.id})">▶ Взять</button>` : ''}
+              ${task.status === 'in_progress' && task.username === this.user?.username ? 
+                `<button class="btn btn-sm btn-primary" onclick="app.completeTask(${task.id})">✓ Завершить</button>` : ''}
+              ${canEdit ? `<button class="btn btn-sm" onclick="app.editTask(${task.id})">✎</button>` : ''}
+              ${task.group_id ? 
+                `<button class="btn btn-sm" onclick="app.removeTaskFromGroup(${task.id})">✕ Группа</button>` : ''}
+              ${canEdit && task.status !== 'completed' ? 
+                `<button class="btn btn-sm btn-danger" onclick="app.deleteTask(${task.id})">🗑</button>` : ''}
+            </div>
+          </div>`;
+        }).join('');
+      },
+
+      formatStatus(s) {
+        const map = { open:'открыта', in_progress:'в работе', completed:'завершена' };
+        return map[s] || s;
+      },
+
+      // === Модалка ===
+      openTaskModal(task = null) {
+        const modal = document.getElementById('task-modal');
+        const title = document.getElementById('task-modal-title');
+        const deleteBtn = document.getElementById('task-delete-btn');
+        
+        document.getElementById('task-id').value = task?.id || '';
+        document.getElementById('task-name').value = task?.name || '';
+        document.getElementById('task-desc').value = task?.description || '';
+        document.getElementById('task-group').value = task?.group_id || '';
+        
+        title.textContent = task ? 'Редактировать задачу' : 'Новая задача';
+        deleteBtn.classList.toggle('hidden', !task || task.status === 'completed');
+        
+        this.renderGroupSelect('task-group', task?.group_id);
+        modal.classList.remove('hidden');
+        document.getElementById('task-name').focus();
+      },
+
+      closeTaskModal() {
+        document.getElementById('task-modal').classList.add('hidden');
+      },
+
+      // === Сохранение задачи (без группы!) ===
+      async saveTask() {
+        const id = document.getElementById('task-id').value;
+        const name = document.getElementById('task-name').value.trim();
+        const description = document.getElementById('task-desc').value;
+        
+        if (!name) return this.toast('Название обязательно', 'error');
+        
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${API.base}/tasks/${id}` : `${API.base}/tasks`;
+        
+        // Отправляем ТОЛЬКО поля задачи (без group_id!)
+        const taskPayload = { name, description };
+        
+        try {
+          const res = await fetch(url, {
+            method,
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Session-Token': API.token()
+            },
+            body: JSON.stringify(taskPayload)
+          });
+          
+          if (res.ok) {
+            const saved = await res.json();
+            const groupId = document.getElementById('task-group').value;
+            
+            // Если выбрана группа — делаем ОТДЕЛЬНЫЙ запрос на привязку
+            if (groupId && saved.id) {
+              await this.assignTaskToGroup(saved.id, parseInt(groupId));
+            }
+            
+            this.closeTaskModal();
+            await this.loadTasks();
+            this.toast(id ? 'Задача обновлена ✓' : 'Задача создана ✓', 'success');
+          } else {
+            const err = await res.text();
+            this.toast(err || 'Ошибка сохранения', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      // === Привязка задачи к группе (отдельный эндпоинт!) ===
+      async assignTaskToGroup(taskId, groupId) {
+        try {
+          const res = await fetch(`${API.base}/tasks/${taskId}/group`, {
+            method: 'PUT',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Session-Token': API.token()
+            },
+            body: JSON.stringify({ group_id: groupId })
+          });
+          // 204 No Content — нормальный ответ
+          if (!res.ok && res.status !== 204) {
+            const err = await res.text();
+            console.warn('Group assign warning:', err);
+            return false;
+          }
+          return true;
+        } catch (e) {
+          console.error('Failed to assign group:', e);
+          return false;
+        }
+      },
+
+      // === Убрать задачу из группы ===
+      async removeTaskFromGroup(taskId) {
+        if (!confirm('Убрать задачу из группы?')) return;
+        
+        try {
+          // Отправляем group_id: null — бек должен обработать как "отвязать"
+          // Если твой бек не принимает null, замени на 0 или добавь DELETE-эндпоинт
+          const res = await fetch(`${API.base}/tasks/${taskId}/group`, {
+            method: 'PUT',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Session-Token': API.token()
+            },
+            body: JSON.stringify({ group_id: null })
+          });
+          if (res.ok || res.status === 204) {
+            await this.loadTasks();
+            this.toast('Задача убрана из группы', 'success');
+          } else {
+            const err = await res.text();
+            this.toast(err || 'Не удалось убрать из группы', 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      async deleteTask(id) {
+        if (!confirm('Удалить задачу? Это действие нельзя отменить.')) return;
+        try {
+          const res = await fetch(`${API.base}/tasks/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-Session-Token': API.token() }
+          });
+          if (res.ok) {
+            await this.loadTasks();
+            this.toast('Задача удалена', 'success');
+          } else {
+            const err = await res.text();
+            this.toast(err || 'Не удалось удалить', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      deleteCurrentTask() {
+        const id = document.getElementById('task-id').value;
+        if (id) {
+          this.closeTaskModal();
+          this.deleteTask(parseInt(id));
+        }
+      },
+
+      async claimTask(id) {
+        try {
+          const res = await fetch(`${API.base}/tasks/${id}/claim`, {
+            method: 'POST',
+            headers: { 'X-Session-Token': API.token() }
+          });
+          if (res.ok) {
+            await this.loadTasks();
+            this.toast('Задача взята в работу ✓', 'success');
+          } else {
+            const err = await res.text();
+            this.toast(err || 'Не удалось взять задачу', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      async completeTask(id) {
+        if (!confirm('Завершить задачу?')) return;
+        try {
+          const res = await fetch(`${API.base}/tasks/${id}/complete`, {
+            method: 'POST',
+            headers: { 'X-Session-Token': API.token() }
+          });
+          if (res.ok) {
+            await this.loadTasks();
+            this.toast('Задача завершена! 🎉', 'success');
+          } else {
+            this.toast('Не удалось завершить', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      editTask(id) {
+        const task = this.tasks.find(t => t.id === id);
+        if (task) this.openTaskModal(task);
+      },
+
+      // === Группы ===
+      async loadGroups() {
+        try {
+          const res = await fetch(`${API.base}/groups`, {
+            headers: { 'X-Session-Token': API.token() }
+          });
+          if (res.ok) {
+            this.groups = await res.json();
+            this.renderGroups();
+            this.renderGroupSelect('filter-group');
+            this.renderGroupSelect('task-group');
+          }
+        } catch (e) {
+          this.toast('Не удалось загрузить группы', 'error');
+        }
+      },
+
+      renderGroups() {
+        const container = document.getElementById('groups-list');
+        if (this.groups.length === 0) {
+          container.innerHTML = '<div style="opacity:0.7; padding:0.5rem;">Нет групп</div>';
+          return;
+        }
+        container.innerHTML = this.groups.map(g => `
+          <div style="padding:0.6rem 0.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+            <div style="min-width:0;">
+              <strong>${this.escape(g.name)}</strong>
+              ${g.description ? `<div style="font-size:0.85rem; opacity:0.75; word-break:break-word;">${this.escape(g.description)}</div>` : ''}
+            </div>
+            <button class="btn btn-sm" onclick="app.viewGroupTasks(${g.id})">Задачи →</button>
+          </div>
+        `).join('');
+      },
+
+      renderGroupSelect(selectId, selectedValue = '') {
+        const select = document.getElementById(selectId);
+        const current = selectedValue || select.value;
+        select.innerHTML = '<option value="">Без группы</option>' + 
+          this.groups.map(g => `<option value="${g.id}">${this.escape(g.name)}</option>`).join('');
+        if (current) select.value = current;
+      },
+
+      async createGroup() {
+        const name = document.getElementById('new-group-name').value.trim();
+        const description = document.getElementById('new-group-desc').value;
+        if (!name) return this.toast('Название группы обязательно', 'error');
+        
+        try {
+          const res = await fetch(`${API.base}/groups`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-Session-Token': API.token()
+            },
+            body: JSON.stringify({ name, description })
+          });
+          if (res.ok) {
+            document.getElementById('new-group-name').value = '';
+            document.getElementById('new-group-desc').value = '';
+            await this.loadGroups();
+            this.toast('Группа создана ✓', 'success');
+          } else {
+            const err = await res.text();
+            this.toast(err || 'Ошибка создания группы', 'error');
+          }
+        } catch (e) {
+          this.toast('Ошибка сети', 'error');
+        }
+      },
+
+      async viewGroupTasks(groupId) {
+        document.getElementById('filter-group').value = groupId;
+        await this.loadTasks();
+        this.toast(`Показываем задачи группы #${groupId}`);
+      },
+
+      // === WebSocket ===
+      connectWS(token) {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const url = `${protocol}//${location.host}${API.ws}?token=${token}`;
+        
+        this.ws = new WebSocket(url);
+        
+        this.ws.onopen = () => {
+          console.log('WS connected');
+          this.toast('🔗 Онлайн-режим активен', 'success');
+        };
+        
+        this.ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            console.log('WS:', msg.type, msg.payload);
+            
+            switch (msg.type) {
+              case 'task:created':
+              case 'task:updated':
+              case 'task:deleted':
+              case 'task:claimed':
+              case 'task:completed':
+                this.toast(`🔄 ${this.formatEventType(msg.type)}`, 'success');
+                this.loadTasks();
+                break;
+              case 'ping':
+                this.ws.send(JSON.stringify({ type: 'pong', ts: Date.now() }));
+                break;
+            }
+          } catch (e) {
+            console.error('WS parse error:', e);
+          }
+        };
+        
+        this.ws.onclose = () => {
+          console.log('WS disconnected');
+          if (API.token()) {
+            setTimeout(() => this.connectWS(API.token()), 5000);
+          }
+        };
+        
+        this.ws.onerror = (err) => {
+          console.error('WS error:', err);
+        };
+      },
+
+      formatEventType(type) {
+        const map = {
+          'task:created': 'Создана новая задача',
+          'task:updated': 'Задача обновлена',
+          'task:deleted': 'Задача удалена',
+          'task:claimed': 'Задача взята в работу',
+          'task:completed': 'Задача завершена'
+        };
+        return map[type] || type;
+      },
+
+      // === Утилиты ===
+      toast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerHTML = this.escape(message);
+        container.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(100%)';
+          setTimeout(() => el.remove(), 300);
+        }, 4000);
+      },
+
+      escape(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+    };
+
+    // === Запуск ===
+    document.addEventListener('DOMContentLoaded', () => app.init());
+  </script>
+</body>
+</html>

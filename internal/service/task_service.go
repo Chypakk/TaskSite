@@ -172,8 +172,10 @@ func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 
 	}
 
+
 	taskDTO.ID = task.ID
 	taskDTO.Name = task.Name
+	// taskDTO.GroupName = task.GroupID
 	taskDTO.Author = task.Author
 	taskDTO.CompletedAt = task.CompletedAt
 	taskDTO.CreatedAt = task.CreatedAt
