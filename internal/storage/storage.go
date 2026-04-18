@@ -583,6 +583,39 @@ func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) 
 	return groups, nil
 }
 
+func (s *Storage) GetTaskGroupById(ctx context.Context, id int) (*model.TaskGroup, error){
+	start := time.Now()
+
+	row := s.db.QueryRow(
+		"SELECT id, name, description, created_at FROM task_group WHERE id = ?",
+		id,
+	)
+
+	var taskGroup model.TaskGroup
+	var createdAtStr sql.NullString
+
+	err := row.Scan(&taskGroup.ID, &taskGroup.Name, &taskGroup.Description, &createdAtStr)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_task_group_by_id", duration, err, "task_group_id", id)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("task_group not found")
+		}
+		return nil, err
+	}
+
+	if createdAtStr.Valid {
+		taskGroup.CreatedAt, err = parseTime(createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse created_at: %w", err)
+		}
+	}
+
+	return &taskGroup, nil
+}
+
 func (s *Storage) AssignTaskToGroup(ctx context.Context, taskID, groupID int) error {
 	start := time.Now()
 	var exists int
