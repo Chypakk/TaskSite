@@ -40,14 +40,21 @@ func (c *Client) Start(ctx context.Context) {
 
 	// Читаем сообщения (нужно для обработки close-фреймов и автоматических pong)
 	for {
-		_, _, err := c.conn.Read(ctx)
-		if err != nil {
-			status := websocket.CloseStatus(err)
-			if status != websocket.StatusNormalClosure && status != websocket.StatusGoingAway {
-				log.Printf("WebSocket read error: %v", err)
-			}
+		select {
+		case <-ctx.Done():
 			return
+			
+		default:
+			_, _, err := c.conn.Read(ctx)
+			if err != nil {
+				status := websocket.CloseStatus(err)
+				if status != websocket.StatusNormalClosure && status != websocket.StatusGoingAway {
+					log.Printf("WebSocket read error: %v", err)
+				}
+				return
+			}
 		}
+
 	}
 }
 
@@ -82,25 +89,25 @@ func (c *Client) writePump(ctx context.Context) {
 }
 
 func (c *Client) pingPump(ctx context.Context) {
-    ticker := time.NewTicker(30 * time.Second)
-    defer ticker.Stop()
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
 
-    for {
-        select {
-        case <-ticker.C:
-            // Создаём контекст с таймаутом для самого пинга
-            pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-            
-            err := c.conn.Ping(pingCtx)
-            cancel() // Обязательно отменяем контекст
-            
-            if err != nil {
-                log.Printf("Ping failed for client, closing: %v", err)
-                return // Выходим — соединение закрыто
-            }
-            
-        case <-ctx.Done():
-            return // Контекст отменён — выходим
-        }
-    }
+	for {
+		select {
+		case <-ticker.C:
+			// Создаём контекст с таймаутом для самого пинга
+			pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+
+			err := c.conn.Ping(pingCtx)
+			cancel() // Обязательно отменяем контекст
+
+			if err != nil {
+				log.Printf("Ping failed for client, closing: %v", err)
+				return // Выходим — соединение закрыто
+			}
+
+		case <-ctx.Done():
+			return // Контекст отменён — выходим
+		}
+	}
 }

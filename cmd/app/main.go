@@ -11,9 +11,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/coder/websocket"
@@ -29,6 +32,9 @@ import (
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "tasksite.db"
@@ -40,7 +46,7 @@ func main() {
 	defer storage.Close()
 
 	wsHub := ws.NewHub()
-	go wsHub.Run(context.Background())
+	go wsHub.Run(ctx)
 
 	taskHandler := handler.NewTaskHandler(storage, wsHub)
 	userHandler := handler.NewUserHandler(storage)
@@ -144,8 +150,49 @@ func main() {
         port = "8081"
     }
 
-    log.Printf("Server starting on port %s", port)
-    if err := http.ListenAndServe(":"+port, mux); err != nil {
-        log.Fatalf("Server failed: %v", err)
+	srv := &http.Server{
+        Addr:    ":" + port,
+        Handler: mux,
+        ReadTimeout:  15 * time.Second,
+        WriteTimeout: 15 * time.Second,
+        IdleTimeout:  60 * time.Second,
     }
+
+	serverErrors := make(chan error, 1)
+    go func() {
+        log.Printf("Server starting on port %s", port)
+        serverErrors <- srv.ListenAndServe()
+    }()
+
+	stop := make(chan os.Signal, 1)
+    signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	select {
+    case err := <-serverErrors:
+        if err != nil && !errors.Is(err, http.ErrServerClosed) {
+            log.Fatalf("Server failed: %v", err)
+        }
+    case <-stop:
+        log.Println("Shutdown signal received, starting graceful shutdown...")
+    }
+
+	cancel()
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer shutdownCancel()
+
+    if err := srv.Shutdown(shutdownCtx); err != nil {
+        log.Printf("HTTP server shutdown error: %v", err)
+    }
+
+	if err := storage.Close(); err != nil {
+        log.Printf("Database close error: %v", err)
+    }
+
+    log.Println("Application stopped gracefully")
+
+    // log.Printf("Server starting on port %s", port)
+    // if err := http.ListenAndServe(":"+port, mux); err != nil {
+    //     log.Fatalf("Server failed: %v", err)
+    // }
 }
