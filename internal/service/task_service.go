@@ -6,11 +6,13 @@ import (
 	"strings"
 	"tasksite/internal/model"
 	"tasksite/internal/model/dto"
-	"tasksite/internal/storage"
+	"tasksite/internal/repository"
 )
 
 type TaskService struct {
-	storage *storage.Storage
+	taskRepo repository.TaskRepository
+	userRepo repository.UserRepository
+	taskGroupRepo repository.TaskGroupRepository
 }
 
 type PaginatedTasksResponse struct {
@@ -18,12 +20,16 @@ type PaginatedTasksResponse struct {
 	Pagination model.PaginationMeta `json:"pagination"`
 }
 
-func NewTaskService(storage *storage.Storage) *TaskService {
-	return &TaskService{storage: storage}
+func NewTaskService(repo repository.TaskRepository, userRepo repository.UserRepository,taskGroupRepo repository.TaskGroupRepository) *TaskService {
+	return &TaskService{
+		taskRepo: repo,
+		userRepo: userRepo,
+		taskGroupRepo: taskGroupRepo,
+	}
 }
 
 func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := s.storage.GetTasks(ctx, statusFilter)
+	tasks, err := s.taskRepo.GetTasks(ctx, statusFilter)
 
 	if err != nil {
 		return nil, err
@@ -40,7 +46,7 @@ func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto
 func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.PaginationQuery, groupID *int) (PaginatedTasksResponse, error) {
 	pq.Validate()
 
-	total, err := s.storage.CountTasks(ctx,
+	total, err := s.taskRepo.CountTasks(ctx,
 		func() *string {
 			if pq.Status != "" {
 				return &pq.Status
@@ -52,7 +58,7 @@ func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.Pagination
 		return PaginatedTasksResponse{}, fmt.Errorf("failed to count tasks: %w", err)
 	}
 
-	tasks, err := s.storage.GetTasksPaginated(ctx, pq, groupID)
+	tasks, err := s.taskRepo.GetTasksPaginated(ctx, pq, groupID)
 	if err != nil {
 		return PaginatedTasksResponse{}, fmt.Errorf("failed to get tasks: %w", err)
 	}
@@ -69,7 +75,7 @@ func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.Pagination
 }
 
 func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, error) {
-	task, err := s.storage.GetTaskByID(ctx, id)
+	task, err := s.taskRepo.GetTaskByID(ctx, id)
 
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("failed to get task: %w", err)
@@ -81,12 +87,12 @@ func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, err
 }
 
 func (s *TaskService) DeleteTask(ctx context.Context, taskID int, username string) error {
-	user, err := s.storage.GetUserByUsername(ctx, username)
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return fmt.Errorf("User not found: %w", err)
 	}
 
-	if err := s.storage.DeleteTask(ctx, taskID, user.ID); err != nil {
+	if err := s.taskRepo.DeleteTask(ctx, taskID, user.ID); err != nil {
 		return fmt.Errorf("Failed to delete task: %w", err)
 	}
 
@@ -94,19 +100,19 @@ func (s *TaskService) DeleteTask(ctx context.Context, taskID int, username strin
 }
 
 func (s *TaskService) ClaimTask(ctx context.Context, taskID int, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(ctx, username)
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	if err := s.storage.ClaimTask(ctx, taskID, user.ID); err != nil {
+	if err := s.taskRepo.ClaimTask(ctx, taskID, user.ID); err != nil {
 		if strings.Contains(err.Error(), "already claimed") {
 			return dto.TaskDTO{}, fmt.Errorf("Task already claimed: %w", err)
 		}
 		return dto.TaskDTO{}, fmt.Errorf("Failed to claim task: %w", err)
 	}
 
-	task, err := s.storage.GetTaskByID(ctx, taskID)
+	task, err := s.taskRepo.GetTaskByID(ctx, taskID)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("Failed to fetch task: %w", err)
 	}
@@ -115,12 +121,12 @@ func (s *TaskService) ClaimTask(ctx context.Context, taskID int, username string
 }
 
 func (s *TaskService) CompleteTask(ctx context.Context, taskID int, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(ctx, username)
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	task, err := s.storage.CompleteTask(ctx, taskID, user.ID)
+	task, err := s.taskRepo.CompleteTask(ctx, taskID, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return dto.TaskDTO{}, fmt.Errorf("Task not found: %w", err)
@@ -135,12 +141,12 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID int, username str
 }
 
 func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, username string) (dto.TaskDTO, error) {
-	user, err := s.storage.GetUserByUsername(ctx, username)
+	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
 	}
 
-	task, err := s.storage.UpdateTask(ctx, taskID, req, user.ID)
+	task, err := s.taskRepo.UpdateTask(ctx, taskID, req, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "access denied") {
 			return dto.TaskDTO{}, fmt.Errorf("access denied: %w", err)
@@ -155,7 +161,7 @@ func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.Upda
 }
 
 func (s *TaskService) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := s.storage.GetUngroupedTasks(ctx, statusFilter)
+	tasks, err := s.taskRepo.GetUngroupedTasks(ctx, statusFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +176,7 @@ func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	var taskDTO dto.TaskDTO
 	username := ""
 	if task.UserID != nil {
-		user, err := s.storage.GetUserById(ctx, *task.UserID)
+		user, err := s.userRepo.GetUserById(ctx, *task.UserID)
 		if err == nil {
 			username = user.Username
 		}
@@ -178,7 +184,7 @@ func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	}
 
 	if task.GroupID != nil {
-		taskGroup, err := s.storage.GetTaskGroupById(ctx, *task.GroupID)
+		taskGroup, err := s.taskGroupRepo.GetTaskGroupById(ctx, *task.GroupID)
 		if err == nil {
 			taskDTO.GroupID = taskGroup.ID
 			taskDTO.GroupName = taskGroup.Name

@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"tasksite/internal/repository"
 	"tasksite/internal/storage"
 	"time"
 )
 
 type SessionStore struct {
-	storage *storage.Storage
+	repo repository.SessionRepository
 	// sessions map[string]*Session
 	// mu       sync.RWMutex
 }
@@ -23,14 +24,14 @@ type Session struct {
 
 func NewSessionStore(storage *storage.Storage) *SessionStore {
 	return &SessionStore{
-		storage: storage,
+		repo: storage,
 	}
 }
 
 func (s *SessionStore) CreateSession(ctx context.Context, username string) string {
 	token := generateToken()
 
-	err := s.storage.CreateSession(ctx, token, username, time.Now().Add(24 * time.Hour))
+	err := s.repo.CreateSession(ctx, token, username, time.Now().Add(24 * time.Hour))
 	if err != nil {
 		log.Printf("Failed to create session for %s: %v", username, err)
 		return ""
@@ -40,18 +41,18 @@ func (s *SessionStore) CreateSession(ctx context.Context, username string) strin
 
 func (s *SessionStore) ValidateSession(ctx context.Context, token string) (string, bool) {
 	
-	session, err := s.storage.GetSessionByToken(ctx, token)
+	session, err := s.repo.GetSessionByToken(ctx, token)
 
 	if err != nil {
 		return "", false
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		s.storage.DeleteSession(ctx, token)
+		s.repo.DeleteSession(ctx, token)
 		return "", false
 	}
 	newExpiredAt := time.Now().Add(24 * time.Hour)
-	if err :=s.storage.UpdateSessionExpires(ctx, token, newExpiredAt); err != nil {
+	if err :=s.repo.UpdateSessionExpires(ctx, token, newExpiredAt); err != nil {
 		log.Printf("Failed to extend session %s: %v", token, err)
 	}
 
@@ -60,7 +61,7 @@ func (s *SessionStore) ValidateSession(ctx context.Context, token string) (strin
 }
 
 func (s *SessionStore) DeleteSession(ctx context.Context, token string) {
-	s.storage.DeleteSession(ctx, token)
+	s.repo.DeleteSession(ctx, token)
 }
 
 func generateToken() string {

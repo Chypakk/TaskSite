@@ -22,7 +22,7 @@ type TaskHandler struct {
 
 func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
-		taskService: service.NewTaskService(storage),
+		taskService: service.NewTaskService(storage, storage, storage),
 		storage:     storage,
 		wsHub: wsHub,
 	}

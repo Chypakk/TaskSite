@@ -4,19 +4,24 @@ import (
 	"context"
 	"tasksite/internal/model"
 	"tasksite/internal/model/dto"
+	"tasksite/internal/repository"
 	"tasksite/internal/storage"
 )
 
 type GroupService struct {
-	storage *storage.Storage
+	repo repository.TaskGroupRepository
+	userRepo repository.UserRepository
 }
 
 func NewGroupService(storage *storage.Storage) *GroupService {
-	return &GroupService{storage: storage}
+	return &GroupService{
+		repo: storage,
+		userRepo: storage,
+	}
 }
 
 func (g *GroupService) CreateTaskGroup(ctx context.Context, name, description string) (dto.TaskGroupDTO, error) {
-	taskGroup, err := g.storage.CreateTaskGroup(ctx, name, description)
+	taskGroup, err := g.repo.CreateTaskGroup(ctx, name, description)
 	if err != nil {
 		return dto.TaskGroupDTO{}, err
 	}
@@ -27,7 +32,7 @@ func (g *GroupService) CreateTaskGroup(ctx context.Context, name, description st
 }
 
 func (g *GroupService) GetTaskGroups(ctx context.Context) ([]dto.TaskGroupDTO, error) {
-	taskGroups, err := g.storage.GetTaskGroups(ctx)
+	taskGroups, err := g.repo.GetTaskGroups(ctx)
 
 	if err != nil {
 		return []dto.TaskGroupDTO{}, err
@@ -42,7 +47,7 @@ func (g *GroupService) GetTaskGroups(ctx context.Context) ([]dto.TaskGroupDTO, e
 }
 
 func (g *GroupService) AssignTaskToGroup(ctx context.Context, taskID, groupID int) error {
-	if err := g.storage.AssignTaskToGroup(ctx, taskID, groupID); err != nil {
+	if err := g.repo.AssignTaskToGroup(ctx, taskID, groupID); err != nil {
 		return err
 	}
 
@@ -50,7 +55,7 @@ func (g *GroupService) AssignTaskToGroup(ctx context.Context, taskID, groupID in
 }
 
 func (g *GroupService) RemoveTaskFromGroup(ctx context.Context, taskID int) error {
-	if err := g.storage.RemoveTaskFromGroup(ctx, taskID); err != nil {
+	if err := g.repo.RemoveTaskFromGroup(ctx, taskID); err != nil {
 		return err
 	}
 
@@ -58,7 +63,7 @@ func (g *GroupService) RemoveTaskFromGroup(ctx context.Context, taskID int) erro
 }
 
 func (g *GroupService) GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := g.storage.GetTasksByGroup(ctx, groupID, statusFilter)
+	tasks, err := g.repo.GetTasksByGroup(ctx, groupID, statusFilter)
 	if err != nil {
 		return []dto.TaskDTO{}, err
 	}
@@ -86,7 +91,7 @@ func (g *GroupService) taskToDTO(ctx context.Context, task model.Task) dto.TaskD
 	var taskDTO dto.TaskDTO
 	username := ""
 	if task.UserID != nil {
-		user, err := g.storage.GetUserById(ctx, *task.UserID)
+		user, err := g.userRepo.GetUserById(ctx, *task.UserID)
 		if err == nil {
 			username = user.Username
 		}
