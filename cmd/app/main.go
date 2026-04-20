@@ -108,10 +108,11 @@ func main() {
     mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
         // Авторизация вручную
         token := r.URL.Query().Get("token")
+		ctx := r.Context()
         if token == "" {
             token = r.Header.Get("X-Session-Token")
         }
-        username, ok := sessionStore.ValidateSession(token)
+        username, ok := sessionStore.ValidateSession(ctx, token)
         if !ok {
             http.Error(w, "Unauthorized", http.StatusUnauthorized)
             return

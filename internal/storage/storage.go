@@ -277,7 +277,7 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	err := s.db.QueryRow(
 		"SELECT id, user_id, name, description, author, status, solution_comment, created_at, completed_at FROM tasks WHERE id = ?",
 		taskID,
-	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description, 
+	).Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
 		&task.Author, &task.Status, &solutionComment, &createdAtStr, &completedAtStr)
 
 	if solutionComment.Valid {
@@ -583,7 +583,7 @@ func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) 
 	return groups, nil
 }
 
-func (s *Storage) GetTaskGroupById(ctx context.Context, id int) (*model.TaskGroup, error){
+func (s *Storage) GetTaskGroupById(ctx context.Context, id int) (*model.TaskGroup, error) {
 	start := time.Now()
 
 	row := s.db.QueryRow(
@@ -660,6 +660,113 @@ func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter
 
 	return s.scanTasks(rows)
 }
+
+// --- РАБОТА С СЕССИЯМИ ---
+
+func (s *Storage) CreateSession(ctx context.Context, token, username string, expiresAt time.Time) error {
+	start := time.Now()
+
+	_, err := s.db.Exec(
+		"INSERT INTO sessions (token, username, expires_at, last_activity) VALUES (?, ?, ?, ?)",
+		token, username, expiresAt, time.Now(),
+	)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "create_session", duration, err, "username", username)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) GetSessionByToken(ctx context.Context, token string) (*model.Session, error) {
+	start := time.Now()
+
+	row := s.db.QueryRow(
+		"SELECT id, token, username, expires_at, created_at, last_activity FROM sessions WHERE token = ?",
+		token,
+	)
+
+	var session model.Session
+	var createdAtStr, expiresAtStr, lastActivity  sql.NullString
+
+	err := row.Scan(&session.ID, &session.Token, &session.Username, &expiresAtStr, &createdAtStr, &lastActivity)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_session_by_token", duration, err)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("session not found")
+		}
+		return nil, err
+	}
+
+	if expiresAtStr.Valid {
+		session.ExpiresAt, err = parseTime(expiresAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse expires_at: %w", err)
+		}
+	}
+
+	if createdAtStr.Valid {
+		session.CreatedAt, err = parseTime(createdAtStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse created_at: %w", err)
+		}
+	}
+
+	if lastActivity.Valid {
+		session.LastActivity, err = parseTime(lastActivity)
+		if err != nil {
+			return nil, fmt.Errorf("parse last_activity: %w", err)
+		}
+	}
+
+	return &session, nil
+}
+
+func (s *Storage) UpdateSessionExpires(ctx context.Context, token string, newExpiredAt time.Time) error {
+	start := time.Now()
+	var exists int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM sessions WHERE token = ?", token).Scan(&exists)
+	if err != nil || exists == 0 {
+		return fmt.Errorf("session not found")
+	}
+
+	_, err = s.db.Exec("UPDATE sessions SET expires_at = ? WHERE token = ?", newExpiredAt, token)
+	duration := time.Since(start)
+	s.logDBOp(ctx, "update_session_expires", duration, err)
+	return err
+}
+
+func (s *Storage) DeleteSession(ctx context.Context, token string) error {
+	start := time.Now()
+
+	result, err := s.db.Exec("DELETE FROM sessions WHERE token = ?", token)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "delete_session", duration, err)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("session not found")
+	}
+
+	return nil
+}
+
+// --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
 
 func parseTime(nullStr sql.NullString) (time.Time, error) {
 	if !nullStr.Valid {

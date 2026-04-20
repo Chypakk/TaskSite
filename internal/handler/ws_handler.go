@@ -28,12 +28,13 @@ func (h *WSHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
 	// Chi-мидлвар уже положил username в контекст, но для вебсокетов часто токен передают в query-параметре
 	// (браузерный WebSocket API не умеет кастомные заголовки)
 	token := r.URL.Query().Get("token")
+	ctx := r.Context()
 	if token == "" {
 		// Фоллбэк на заголовок (для Postman/curl/мобилок)
 		token = r.Header.Get("X-Session-Token")
 	}
 
-	username, ok := h.sessionStore.ValidateSession(token)
+	username, ok := h.sessionStore.ValidateSession(ctx, token)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
