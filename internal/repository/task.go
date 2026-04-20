@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"tasksite/internal/model"
+	"tasksite/internal/storage"
 )
 
 type TaskRepository interface {
@@ -16,4 +17,6 @@ type TaskRepository interface {
 	GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]model.Task, error)
 	CountTasks(ctx context.Context, statusFilter *string, groupID *int) (int, error)
 	GetTasksPaginated(ctx context.Context, pq model.PaginationQuery, groupID *int) ([]model.Task, error)
+	GetTasksWithRelations(ctx context.Context, statusFilter *string, groupID *int, limit, offset int, sortBy string) ([]storage.TaskWithRelations, error)
+	GetTaskWithRelationsByID(ctx context.Context, taskID int) (*storage.TaskWithRelations, error)
 }

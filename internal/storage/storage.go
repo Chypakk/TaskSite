@@ -25,6 +25,13 @@ type Storage struct {
 	db *sql.DB
 }
 
+type TaskWithRelations struct {
+	model.Task
+	// GroupID   int    `json:"group_id,omitempty"`
+	Username  string `json:"username,omitempty"`
+	GroupName string `json:"group_name,omitempty"`
+}
+
 func ConnectDB(dbPath string) (*Storage, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -449,6 +456,74 @@ func (s *Storage) GetTasksPaginated(ctx context.Context, pq model.PaginationQuer
 	return s.scanTasks(rows)
 }
 
+func (s *Storage) GetTasksWithRelations(ctx context.Context, statusFilter *string, groupID *int, limit, offset int, sortBy string) ([]TaskWithRelations, error) {
+	start := time.Now()
+	
+	query := `
+		SELECT 
+			t.id, t.user_id, t.name, t.description, t.author, t.status, t.group_id,
+			t.solution_comment, t.created_at, t.updated_at, t.completed_at,
+			u.username as username,
+			g.name as group_name
+		FROM tasks t
+		LEFT JOIN users u ON t.user_id = u.id
+		LEFT JOIN task_group g ON t.group_id = g.id
+		WHERE 1=1
+	`
+	var args []any
+
+	if statusFilter != nil && *statusFilter != "" {
+		query += " AND t.status = ?"
+		args = append(args, *statusFilter)
+	}
+	if groupID != nil && *groupID > 0 {
+		query += " AND t.group_id = ?"
+		args = append(args, *groupID)
+	}
+
+	// Сортировка (базовая валидация на уровне кода)
+	switch sortBy {
+	case "created_at:asc":
+		query += " ORDER BY t.created_at ASC"
+	case "created_at:desc":
+		query += " ORDER BY t.created_at DESC"
+	case "updated_at:asc":
+		query += " ORDER BY t.updated_at ASC"
+	case "updated_at:desc":
+		query += " ORDER BY t.updated_at DESC"
+	default:
+		query += " ORDER BY t.id DESC"
+	}
+
+	if limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_tasks_with_relations", duration, err, "status", statusFilter, "group_id", groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return s.scanTasksWithRelations(rows)
+}
+
+func (s *Storage) GetTaskWithRelationsByID(ctx context.Context, taskID int) (*TaskWithRelations, error) {
+    tasks, err := s.GetTasksWithRelations(ctx, nil, nil, 1, 0, "id:desc")
+    if err != nil {
+        return nil, err
+    }
+    for _, t := range tasks {
+        if t.Task.ID == taskID {
+            return &t, nil
+        }
+    }
+    return nil, fmt.Errorf("task not found")
+}
+
 // --- РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ---
 
 func (s *Storage) CreateUser(ctx context.Context, username, password string) (*model.User, error) {
@@ -690,7 +765,7 @@ func (s *Storage) GetSessionByToken(ctx context.Context, token string) (*model.S
 	)
 
 	var session model.Session
-	var createdAtStr, expiresAtStr, lastActivity  sql.NullString
+	var createdAtStr, expiresAtStr, lastActivity sql.NullString
 
 	err := row.Scan(&session.ID, &session.Token, &session.Username, &expiresAtStr, &createdAtStr, &lastActivity)
 
@@ -812,6 +887,43 @@ func (s *Storage) scanTasks(rows *sql.Rows) ([]model.Task, error) {
 		tasks = append(tasks, t)
 	}
 	return tasks, nil
+}
+
+func (s *Storage) scanTasksWithRelations(rows *sql.Rows) ([]TaskWithRelations, error) {
+	result := make([]TaskWithRelations, 0)
+	for rows.Next() {
+		var t TaskWithRelations
+		var createdAtStr, updatedAtStr, completedAtStr, username, groupName sql.NullString
+		
+		err := rows.Scan(
+			&t.Task.ID, &t.Task.UserID, &t.Task.Name, &t.Task.Description, &t.Task.Author,
+			&t.Task.Status, &t.Task.GroupID, &t.Task.SolutionComment,
+			&createdAtStr, &updatedAtStr, &completedAtStr,
+			&username, &groupName,
+		)
+		if err != nil {
+			return nil, err
+		}
+		
+		if createdAtStr.Valid {
+			t.Task.CreatedAt, _ = parseTime(createdAtStr)
+		}
+		if updatedAtStr.Valid {
+			t.Task.UpdatedAt, _ = parseTime(updatedAtStr)
+		}
+		if completedAtStr.Valid {
+			t.Task.CompletedAt, _ = parseTime(completedAtStr)
+		}
+		if username.Valid {
+			t.Username = username.String
+		}
+		if groupName.Valid {
+			t.GroupName = groupName.String
+		}
+		
+		result = append(result, t)
+	}
+	return result, nil
 }
 
 // Close закрывает подключение к БД

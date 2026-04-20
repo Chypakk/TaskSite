@@ -7,11 +7,12 @@ import (
 	"tasksite/internal/model"
 	"tasksite/internal/model/dto"
 	"tasksite/internal/repository"
+	"tasksite/internal/storage"
 )
 
 type TaskService struct {
-	taskRepo repository.TaskRepository
-	userRepo repository.UserRepository
+	taskRepo      repository.TaskRepository
+	userRepo      repository.UserRepository
 	taskGroupRepo repository.TaskGroupRepository
 }
 
@@ -20,10 +21,10 @@ type PaginatedTasksResponse struct {
 	Pagination model.PaginationMeta `json:"pagination"`
 }
 
-func NewTaskService(repo repository.TaskRepository, userRepo repository.UserRepository,taskGroupRepo repository.TaskGroupRepository) *TaskService {
+func NewTaskService(repo repository.TaskRepository, userRepo repository.UserRepository, taskGroupRepo repository.TaskGroupRepository) *TaskService {
 	return &TaskService{
-		taskRepo: repo,
-		userRepo: userRepo,
+		taskRepo:      repo,
+		userRepo:      userRepo,
 		taskGroupRepo: taskGroupRepo,
 	}
 }
@@ -186,7 +187,7 @@ func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	if task.GroupID != nil {
 		taskGroup, err := s.taskGroupRepo.GetTaskGroupById(ctx, *task.GroupID)
 		if err == nil {
-			taskDTO.GroupID = taskGroup.ID
+			taskDTO.GroupID = &taskGroup.ID
 			taskDTO.GroupName = taskGroup.Name
 			// taskDTO.GroupDescription = taskGroup
 		}
@@ -204,4 +205,21 @@ func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
 	taskDTO.Username = username
 
 	return taskDTO
+}
+
+func (s *TaskService) taskWithRelationsToDTO(t storage.TaskWithRelations) dto.TaskDTO {
+	return dto.TaskDTO{
+		ID:              t.Task.ID,
+		GroupID:         t.GroupID,
+		Username:        t.Username,
+		GroupName:       t.GroupName,
+		Name:            t.Task.Name,
+		Description:     t.Task.Description,
+		Author:          t.Task.Author,
+		Status:          t.Task.Status,
+		SolutionComment: t.Task.SolutionComment,
+		CreatedAt:       t.Task.CreatedAt,
+		UpdatedAt:       t.Task.UpdatedAt,
+		CompletedAt:     t.Task.CompletedAt,
+	}
 }
