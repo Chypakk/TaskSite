@@ -36,10 +36,6 @@ func NewUserHandler(storage *storage.Storage) *UserHandler {
 // @Router       /register [post]
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req model.RegisterRequest
 
@@ -88,10 +84,6 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Router       /login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req model.LoginRequest
 
@@ -126,10 +118,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	token := r.Header.Get("X-Session-Token")
 	if token == "" {
@@ -163,10 +151,6 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	token := r.Header.Get("X-Session-Token")
 	h.sessionStore.DeleteSession(ctx, token)

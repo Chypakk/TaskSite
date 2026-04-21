@@ -16,14 +16,12 @@ import (
 
 type TaskHandler struct {
 	taskService *service.TaskService
-	storage     *storage.Storage
 	wsHub       *ws.Hub
 }
 
 func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
 		taskService: service.NewTaskService(storage, storage, storage),
-		storage:     storage,
 		wsHub: wsHub,
 	}
 }
@@ -44,12 +42,6 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "CreateTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req model.CreateTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -65,7 +57,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.CreateTask(ctx, req.Name, req.Description, req.Author)
+	task, err := h.taskService.CreateTask(ctx, req.Name, req.Description, req.Author)
 	if err != nil {
 		log.Error(ctx, "CreateTask: storage error", err, "name", req.Name)
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
@@ -93,12 +85,6 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-
-	if r.Method != http.MethodGet {
-		log.Warn(ctx, "GetTasks: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	if r.URL.Query().Get("page") != "" || r.URL.Query().Get("limit") != "" {
         pq := parsePagination(r)
@@ -143,12 +129,6 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodGet {
-		log.Warn(ctx, "GetTaskById: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	id, err := strconv.Atoi(path)
 	if err != nil {
@@ -172,14 +152,9 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodDelete {
-		log.Warn(ctx, "DeleteTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+	
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -225,12 +200,6 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "ClaimTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	username, ok := r.Context().Value("username").(string)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -239,7 +208,8 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	path = strings.TrimSuffix(path, "/claim")
-	taskID, err := strconv.Atoi(path)
+
+	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -278,15 +248,9 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "CompleteTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	path = strings.TrimSuffix(path, "/complete")
-	taskID, err := strconv.Atoi(path)
+	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -324,14 +288,8 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPut {
-		log.Warn(ctx, "UpdateTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)

@@ -92,6 +92,17 @@ func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, err
 	return taskDTO, nil
 }
 
+func (s *TaskService) CreateTask(ctx context.Context, name, description, author string) (dto.TaskDTO, error) {
+	task, err := s.taskRepo.CreateTask(ctx, name, description, author)
+	if err != nil {
+		return dto.TaskDTO{}, fmt.Errorf("error create task: %w", err)
+	}
+
+	return s.taskWithRelationsToDTO(storage.TaskWithRelations{
+		Task: *task,
+	}), nil
+}
+
 func (s *TaskService) DeleteTask(ctx context.Context, taskID int, username string) error {
 	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
