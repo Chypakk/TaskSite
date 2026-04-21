@@ -19,7 +19,7 @@ type UserHandler struct {
 func NewUserHandler(storage *storage.Storage) *UserHandler {
 	return &UserHandler{
 		storage:      storage,
-		sessionStore: NewSessionStore(),
+		sessionStore: NewSessionStore(storage),
 	}
 }
 
@@ -36,10 +36,6 @@ func NewUserHandler(storage *storage.Storage) *UserHandler {
 // @Router       /register [post]
 func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req model.RegisterRequest
 
@@ -59,7 +55,7 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := h.sessionStore.CreateSession(user.Username)
+	token := h.sessionStore.CreateSession(ctx, user.Username)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -88,10 +84,6 @@ func (h *UserHandler) Register(w http.ResponseWriter, r *http.Request) {
 // @Router       /login [post]
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	var req model.LoginRequest
 
@@ -112,7 +104,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := h.sessionStore.CreateSession(user.Username)
+	token := h.sessionStore.CreateSession(ctx, user.Username)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -126,10 +118,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 	ctx := r.Context()
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	token := r.Header.Get("X-Session-Token")
 	if token == "" {
@@ -137,7 +125,7 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	username, valid := h.sessionStore.ValidateSession(token)
+	username, valid := h.sessionStore.ValidateSession(ctx, token)
 	if !valid {
 		http.Error(w, "Session expired", http.StatusUnauthorized)
 		return
@@ -162,13 +150,10 @@ func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request){
 }
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+	ctx := r.Context()
 
 	token := r.Header.Get("X-Session-Token")
-	h.sessionStore.DeleteSession(token)
+	h.sessionStore.DeleteSession(ctx, token)
 	w.WriteHeader(http.StatusOK)
 }
 

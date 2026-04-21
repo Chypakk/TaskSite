@@ -16,15 +16,13 @@ import (
 
 type TaskHandler struct {
 	taskService *service.TaskService
-	storage     *storage.Storage
 	wsHub       *ws.Hub
 }
 
 func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
-		taskService: service.NewTaskService(storage),
-		storage:     storage,
-		wsHub: wsHub,
+		taskService: service.NewTaskService(storage, storage, storage),
+		wsHub:       wsHub,
 	}
 }
 
@@ -44,12 +42,6 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "CreateTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req model.CreateTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -65,7 +57,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.storage.CreateTask(ctx, req.Name, req.Description, req.Author)
+	task, err := h.taskService.CreateTask(ctx, req.Name, req.Description, req.Author)
 	if err != nil {
 		log.Error(ctx, "CreateTask: storage error", err, "name", req.Name)
 		http.Error(w, "Failed to create task", http.StatusInternalServerError)
@@ -94,33 +86,27 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodGet {
-		log.Warn(ctx, "GetTasks: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if r.URL.Query().Get("page") != "" || r.URL.Query().Get("limit") != "" {
+		pq := parsePagination(r)
+
+		var groupID *int
+		if groupParam := chi.URLParam(r, "id"); groupParam != "" {
+			if gid, err := strconv.Atoi(groupParam); err == nil {
+				groupID = &gid
+			}
+		}
+
+		resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
+		if err != nil {
+			log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
+			http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
 		return
 	}
-
-	if r.URL.Query().Get("page") != "" || r.URL.Query().Get("limit") != "" {
-        pq := parsePagination(r)
-        
-        var groupID *int
-        if groupParam := chi.URLParam(r, "id"); groupParam != "" {
-            if gid, err := strconv.Atoi(groupParam); err == nil {
-                groupID = &gid
-            }
-        }
-        
-        resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
-        if err != nil {
-            log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
-            http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
-            return
-        }
-        
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(resp)
-        return
-    }
 
 	var statusFilter *string
 
@@ -143,14 +129,8 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodGet {
-		log.Warn(ctx, "GetTaskById: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -172,14 +152,9 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodDelete {
-		log.Warn(ctx, "DeleteTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -216,7 +191,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int {"id": id})
+	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int{"id": id})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -224,12 +199,6 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
-
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "ClaimTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 
 	username, ok := r.Context().Value("username").(string)
 	if !ok {
@@ -239,7 +208,8 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	path = strings.TrimSuffix(path, "/claim")
-	taskID, err := strconv.Atoi(path)
+
+	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -278,15 +248,9 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPost {
-		log.Warn(ctx, "CompleteTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
 	path = strings.TrimSuffix(path, "/complete")
-	taskID, err := strconv.Atoi(path)
+	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -295,7 +259,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Context().Value("username").(string)
 
-	task, err := h.taskService.CompleteTask(ctx, taskID, username)
+	// task, err := h.taskService.CompleteTask(ctx, taskID, username)
+	err = h.taskService.CompleteTask(ctx, taskID, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			log.Warn(ctx, "Task not found ", "task_id", taskID)
@@ -312,25 +277,19 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendEvent(h.wsHub, ws.EventTaskCompleted, task)
+	sendEvent(h.wsHub, ws.EventTaskCompleted, nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(task)
+	//json.NewEncoder(w).Encode(task)
 }
 
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	log := logger.FromContext(ctx)
 
-	if r.Method != http.MethodPut {
-		log.Warn(ctx, "UpdateTask: wrong method", "got", r.Method)
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -392,21 +351,21 @@ func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) 
 }
 
 func parsePagination(r *http.Request) model.PaginationQuery {
-    pq := model.DefaultPagination()
-    
-    if page := r.URL.Query().Get("page"); page != "" {
-        if p, err := strconv.Atoi(page); err == nil {
-            pq.Page = p
-        }
-    }
-    if limit := r.URL.Query().Get("limit"); limit != "" {
-        if l, err := strconv.Atoi(limit); err == nil {
-            pq.Limit = l
-        }
-    }
-    pq.Status = r.URL.Query().Get("status")
-    pq.Sort = r.URL.Query().Get("sort")
-    
-    pq.Validate()
-    return pq
+	pq := model.DefaultPagination()
+
+	if page := r.URL.Query().Get("page"); page != "" {
+		if p, err := strconv.Atoi(page); err == nil {
+			pq.Page = p
+		}
+	}
+	if limit := r.URL.Query().Get("limit"); limit != "" {
+		if l, err := strconv.Atoi(limit); err == nil {
+			pq.Limit = l
+		}
+	}
+	pq.Status = r.URL.Query().Get("status")
+	pq.Sort = r.URL.Query().Get("sort")
+
+	pq.Validate()
+	return pq
 }

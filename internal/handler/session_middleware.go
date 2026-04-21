@@ -4,14 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 	"net/http"
-	"sync"
+	"tasksite/internal/repository"
+	"tasksite/internal/storage"
 	"time"
 )
 
 type SessionStore struct {
-	sessions map[string]*Session
-	mu       sync.RWMutex
+	repo repository.SessionRepository
+	// sessions map[string]*Session
+	// mu       sync.RWMutex
 }
 
 type Session struct {
@@ -19,49 +22,46 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
-func NewSessionStore() *SessionStore {
+func NewSessionStore(storage *storage.Storage) *SessionStore {
 	return &SessionStore{
-		sessions: make(map[string]*Session),
+		repo: storage,
 	}
 }
 
-func (s *SessionStore) CreateSession(username string) string {
+func (s *SessionStore) CreateSession(ctx context.Context, username string) string {
 	token := generateToken()
 
-	s.mu.Lock()
-	s.sessions[token] = &Session{
-		Username:  username,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+	err := s.repo.CreateSession(ctx, token, username, time.Now().Add(24 * time.Hour))
+	if err != nil {
+		log.Printf("Failed to create session for %s: %v", username, err)
+		return ""
 	}
-	s.mu.Unlock()
-
 	return token
 }
 
-func (s *SessionStore) ValidateSession(token string) (string, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *SessionStore) ValidateSession(ctx context.Context, token string) (string, bool) {
+	
+	session, err := s.repo.GetSessionByToken(ctx, token)
 
-	session, exists := s.sessions[token]
-
-	if !exists {
+	if err != nil {
 		return "", false
 	}
 
 	if time.Now().After(session.ExpiresAt) {
-		delete(s.sessions, token)
-		// s.DeleteSession(token)
+		s.repo.DeleteSession(ctx, token)
 		return "", false
 	}
+	newExpiredAt := time.Now().Add(24 * time.Hour)
+	if err :=s.repo.UpdateSessionExpires(ctx, token, newExpiredAt); err != nil {
+		log.Printf("Failed to extend session %s: %v", token, err)
+	}
 
-	session.ExpiresAt = time.Now().Add(24 * time.Hour)
+	session.ExpiresAt = newExpiredAt
 	return session.Username, true
 }
 
-func (s *SessionStore) DeleteSession(token string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.sessions, token)
+func (s *SessionStore) DeleteSession(ctx context.Context, token string) {
+	s.repo.DeleteSession(ctx, token)
 }
 
 func generateToken() string {
@@ -73,18 +73,20 @@ func generateToken() string {
 func (s *SessionStore) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := r.Header.Get("X-Session-Token")
+		ctx := r.Context()
+
 		if token == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		username, valid := s.ValidateSession(token)
+		username, valid := s.ValidateSession(ctx, token)
 		if !valid {
 			http.Error(w, "Session expired or invalid", http.StatusUnauthorized)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), "username", username)
+		ctx = context.WithValue(r.Context(), "username", username)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

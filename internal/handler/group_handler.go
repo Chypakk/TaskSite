@@ -8,6 +8,8 @@ import (
 	"tasksite/internal/model"
 	"tasksite/internal/service"
 	"tasksite/internal/storage"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type TaskGroupHandler struct {
@@ -20,10 +22,7 @@ func NewTaskGroupHandler(storage *storage.Storage) *TaskGroupHandler {
 
 func (h *TaskGroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    if r.Method != http.MethodPost {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+
     var req model.CreateGroupRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
         http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -50,10 +49,7 @@ func (h *TaskGroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskGroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    if r.Method != http.MethodGet {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+
     groups, err := h.groupService.GetTaskGroups(ctx)
     if err != nil {
         http.Error(w, "Failed to get groups", http.StatusInternalServerError)
@@ -65,13 +61,10 @@ func (h *TaskGroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 
 func (h *TaskGroupHandler) GetGroupTasks(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    if r.Method != http.MethodGet {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+
     path := strings.TrimPrefix(r.URL.Path, "/api/groups/")
     path = strings.TrimSuffix(path, "/tasks")
-    groupID, err := strconv.Atoi(path)
+    groupID, err := strconv.Atoi(chi.URLParam(r, "id"))
     if err != nil {
         http.Error(w, "Invalid group ID", http.StatusBadRequest)
         return
@@ -93,13 +86,10 @@ func (h *TaskGroupHandler) GetGroupTasks(w http.ResponseWriter, r *http.Request)
 
 func (h *TaskGroupHandler) AssignTaskToGroup(w http.ResponseWriter, r *http.Request) {
     ctx := r.Context()
-    if r.Method != http.MethodPut {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+
     path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
     path = strings.TrimSuffix(path, "/group")
-    taskID, err := strconv.Atoi(path)
+    taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
     if err != nil {
         http.Error(w, "Invalid task ID", http.StatusBadRequest)
         return

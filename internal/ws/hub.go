@@ -3,6 +3,8 @@ package ws
 import (
 	"context"
 	"sync"
+
+	"github.com/coder/websocket"
 )
 
 type Hub struct {
@@ -58,6 +60,7 @@ func (h *Hub) Run(ctx context.Context) {
 			for client := range h.clients{
 				delete(h.clients, client)
 				close(client.send)
+				client.conn.Close(websocket.StatusGoingAway, "server shutting down")
 			}
 			h.mu.Unlock()
 			return
