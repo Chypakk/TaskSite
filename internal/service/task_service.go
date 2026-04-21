@@ -30,7 +30,7 @@ func NewTaskService(repo repository.TaskRepository, userRepo repository.UserRepo
 }
 
 func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := s.taskRepo.GetTasks(ctx, statusFilter)
+	tasks, err := s.taskRepo.GetTasks(ctx, nil, nil, 0, 0, statusFilter, "")
 
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func (s *TaskService) GetTasks(ctx context.Context, statusFilter *string) ([]dto
 
 	tasksDTO := make([]dto.TaskDTO, len(tasks))
 	for i, task := range tasks {
-		tasksDTO[i] = s.toDTO(ctx, task)
+		tasksDTO[i] = s.taskWithRelationsToDTO(task)
 	}
 
 	return tasksDTO, nil
@@ -59,14 +59,19 @@ func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.Pagination
 		return PaginatedTasksResponse{}, fmt.Errorf("failed to count tasks: %w", err)
 	}
 
-	tasks, err := s.taskRepo.GetTasksPaginated(ctx, pq, groupID)
+	var gid int
+	if groupID != nil {
+		gid = *groupID
+	}
+
+	tasks, err := s.taskRepo.GetTasks(ctx, nil, &gid, pq.Limit, pq.Offset(), nil, pq.Sort)
 	if err != nil {
 		return PaginatedTasksResponse{}, fmt.Errorf("failed to get tasks: %w", err)
 	}
 
 	dtos := make([]dto.TaskDTO, len(tasks))
 	for i, t := range tasks {
-		dtos[i] = s.toDTO(ctx, t)
+		dtos[i] = s.taskWithRelationsToDTO(t)
 	}
 
 	return PaginatedTasksResponse{
@@ -76,13 +81,13 @@ func (s *TaskService) GetTasksPaginated(ctx context.Context, pq model.Pagination
 }
 
 func (s *TaskService) GetTaskByID(ctx context.Context, id int) (dto.TaskDTO, error) {
-	task, err := s.taskRepo.GetTaskByID(ctx, id)
+	task, err := s.taskRepo.GetTasks(ctx, &id, nil, 0, 0, nil, "")
 
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("failed to get task: %w", err)
 	}
 
-	taskDTO := s.toDTO(ctx, *task)
+	taskDTO := s.taskWithRelationsToDTO(task[0])
 
 	return taskDTO, nil
 }
@@ -113,32 +118,34 @@ func (s *TaskService) ClaimTask(ctx context.Context, taskID int, username string
 		return dto.TaskDTO{}, fmt.Errorf("Failed to claim task: %w", err)
 	}
 
-	task, err := s.taskRepo.GetTaskByID(ctx, taskID)
+	task, err := s.taskRepo.GetTasks(ctx, &taskID, nil, 0, 0, nil, "")
 	if err != nil {
 		return dto.TaskDTO{}, fmt.Errorf("Failed to fetch task: %w", err)
 	}
 
-	return s.toDTO(ctx, *task), nil
+	return s.taskWithRelationsToDTO(task[0]), nil
 }
 
-func (s *TaskService) CompleteTask(ctx context.Context, taskID int, username string) (dto.TaskDTO, error) {
+func (s *TaskService) CompleteTask(ctx context.Context, taskID int, username string) error {
 	user, err := s.userRepo.GetUserByUsername(ctx, username)
 	if err != nil {
-		return dto.TaskDTO{}, fmt.Errorf("User not found: %w", err)
+		return fmt.Errorf("User not found: %w", err)
 	}
 
-	task, err := s.taskRepo.CompleteTask(ctx, taskID, user.ID)
+	//task, err := s.taskRepo.CompleteTask(ctx, taskID, user.ID)
+	err = s.taskRepo.CompleteTask(ctx, taskID, user.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return dto.TaskDTO{}, fmt.Errorf("Task not found: %w", err)
+			return fmt.Errorf("Task not found: %w", err)
 		}
 		if strings.Contains(err.Error(), "forbidden") {
-			return dto.TaskDTO{}, fmt.Errorf("forbidden: %w", err)
+			return fmt.Errorf("forbidden: %w", err)
 		}
-		return dto.TaskDTO{}, fmt.Errorf("Failed to complete task: %w", err)
+		return fmt.Errorf("Failed to complete task: %w", err)
 	}
 
-	return s.toDTO(ctx, *task), nil
+	//return s.toDTO(ctx, *task), nil
+	return nil
 }
 
 func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, username string) (dto.TaskDTO, error) {
@@ -158,53 +165,20 @@ func (s *TaskService) UpdateTask(ctx context.Context, taskID int, req model.Upda
 		return dto.TaskDTO{}, fmt.Errorf("Failed to update task: %w", err)
 	}
 
-	return s.toDTO(ctx, *task), nil
+	return s.taskWithRelationsToDTO(*task), nil
 }
 
 func (s *TaskService) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]dto.TaskDTO, error) {
-	tasks, err := s.taskRepo.GetUngroupedTasks(ctx, statusFilter)
+	nonGroup := 0
+	tasks, err := s.taskRepo.GetTasks(ctx, nil, &nonGroup, 0, 0, statusFilter, "")
 	if err != nil {
 		return nil, err
 	}
 	dtos := make([]dto.TaskDTO, len(tasks))
 	for i, t := range tasks {
-		dtos[i] = s.toDTO(ctx, t)
+		dtos[i] = s.taskWithRelationsToDTO(t)
 	}
 	return dtos, nil
-}
-
-func (s *TaskService) toDTO(ctx context.Context, task model.Task) dto.TaskDTO {
-	var taskDTO dto.TaskDTO
-	username := ""
-	if task.UserID != nil {
-		user, err := s.userRepo.GetUserById(ctx, *task.UserID)
-		if err == nil {
-			username = user.Username
-		}
-
-	}
-
-	if task.GroupID != nil {
-		taskGroup, err := s.taskGroupRepo.GetTaskGroupById(ctx, *task.GroupID)
-		if err == nil {
-			taskDTO.GroupID = &taskGroup.ID
-			taskDTO.GroupName = taskGroup.Name
-			// taskDTO.GroupDescription = taskGroup
-		}
-	}
-
-	taskDTO.ID = task.ID
-	taskDTO.Name = task.Name
-
-	taskDTO.Author = task.Author
-	taskDTO.CompletedAt = task.CompletedAt
-	taskDTO.CreatedAt = task.CreatedAt
-	taskDTO.Description = task.Description
-	taskDTO.Status = task.Status
-	taskDTO.UpdatedAt = task.UpdatedAt
-	taskDTO.Username = username
-
-	return taskDTO
 }
 
 func (s *TaskService) taskWithRelationsToDTO(t storage.TaskWithRelations) dto.TaskDTO {

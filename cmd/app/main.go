@@ -67,7 +67,7 @@ func main() {
 	// r.Get("/api/ws", wsHandler.ServeWS)
 
 	r.Group(func(r chi.Router) {
-		r.Use(handler.RequestLogger)
+		// r.Use(handler.RequestLogger)
 		r.Use(sessionStore.AuthMiddleware)
 
 		r.Post("/api/logout", userHandler.Logout)

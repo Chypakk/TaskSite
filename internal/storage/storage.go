@@ -38,6 +38,10 @@ func ConnectDB(dbPath string) (*Storage, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxIdleTime(0)
+
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -86,6 +90,66 @@ func runMigrations(db *sql.DB) error {
 
 // --- РАБОТА С ТАСКАМИ ---
 
+func (s *Storage) GetTasks(ctx context.Context, taskID, groupID *int, limit, offset int, statusFilter *string, sortBy string) ([]TaskWithRelations, error){
+	start := time.Now()
+	
+	query := `
+		SELECT 
+			t.id, t.user_id, t.name, t.description, t.author, t.status, t.group_id,
+			t.solution_comment, t.created_at, t.updated_at, t.completed_at,
+			u.username as username,
+			g.name as group_name
+		FROM tasks t
+		LEFT JOIN users u ON t.user_id = u.id
+		LEFT JOIN task_group g ON t.group_id = g.id
+		WHERE 1=1
+	`
+	var args []any
+
+	if statusFilter != nil && *statusFilter != "" {
+		query += " AND t.status = ?"
+		args = append(args, *statusFilter)
+	}
+	if taskID != nil && *taskID > 0 {
+		query += " AND t.id = ?"
+		args = append(args, taskID)
+	}
+	if groupID != nil && *groupID > 0 {
+		query += " AND t.group_id = ?"
+		args = append(args, groupID)
+	} else if (groupID != nil && *groupID == 0){
+		query += " AND group_id IS NULL"
+	}
+
+	switch sortBy {
+	case "created_at:asc":
+		query += " ORDER BY t.created_at ASC"
+	case "created_at:desc":
+		query += " ORDER BY t.created_at DESC"
+	case "updated_at:asc":
+		query += " ORDER BY t.updated_at ASC"
+	case "updated_at:desc":
+		query += " ORDER BY t.updated_at DESC"
+	default:
+		query += " ORDER BY t.id DESC"
+	}
+
+	if limit > 0 {
+		query += " LIMIT ? OFFSET ?"
+		args = append(args, limit, offset)
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	duration := time.Since(start)
+	s.logDBOp(ctx, "get_tasks_with_relations", duration, err, "status", statusFilter, "group_id", groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return s.scanTasksWithRelations(rows)
+}
+
 func (s *Storage) CreateTask(ctx context.Context, name, description, author string) (*model.Task, error) {
 	start := time.Now()
 
@@ -118,77 +182,6 @@ func (s *Storage) CreateTask(ctx context.Context, name, description, author stri
 	}, nil
 }
 
-func (s *Storage) GetTasks(ctx context.Context, statusFilter *string) ([]model.Task, error) {
-	start := time.Now()
-
-	query := "SELECT id, user_id, name, description, author, status, group_id, solution_comment, created_at, updated_at, completed_at FROM tasks WHERE 1=1"
-	var args []any
-
-	if statusFilter != nil {
-		query += " AND status = ?"
-		args = append(args, *statusFilter)
-	}
-
-	query += " ORDER BY id DESC"
-	rows, err := s.db.Query(query, args...)
-
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_tasks", duration, err, "status_filter", statusFilter)
-
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return s.scanTasks(rows)
-}
-
-func (s *Storage) GetTaskByID(ctx context.Context, taskID int) (*model.Task, error) {
-	start := time.Now()
-
-	row := s.db.QueryRow(
-		"SELECT id, user_id, name, description, author, status, group_id, solution_comment, created_at, updated_at, completed_at FROM tasks WHERE id = ?",
-		taskID,
-	)
-
-	var task model.Task
-	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
-
-	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description, &task.Author, &task.Status, &task.GroupID, &task.SolutionComment, &createdAtStr, &updatedAtStr, &completedAtStr)
-
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_task_by_id", duration, err, "task_id", taskID)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("task not found")
-		}
-		return nil, err
-	}
-
-	if createdAtStr.Valid {
-		task.CreatedAt, err = parseTime(createdAtStr)
-		if err != nil {
-			return nil, fmt.Errorf("parse created_at: %w", err)
-		}
-	}
-
-	if completedAtStr.Valid {
-		task.CompletedAt, err = parseTime(completedAtStr)
-		if err != nil {
-			return nil, fmt.Errorf("parse completed_at: %w", err)
-		}
-	}
-	if updatedAtStr.Valid {
-		task.UpdatedAt, err = parseTime(updatedAtStr)
-		if err != nil {
-			return nil, fmt.Errorf("parse completed_at: %w", err)
-		}
-	}
-
-	return &task, nil
-}
-
 func (s *Storage) ClaimTask(ctx context.Context, taskId, userId int) error {
 	start := time.Now()
 
@@ -216,7 +209,7 @@ func (s *Storage) ClaimTask(ctx context.Context, taskId, userId int) error {
 	return nil
 }
 
-func (s *Storage) CompleteTask(ctx context.Context, taskID, userID int) (*model.Task, error) {
+func (s *Storage) CompleteTaskOld(ctx context.Context, taskID, userID int) (*model.Task, error) {
 	start := time.Now()
 	row := s.db.QueryRow(
 		`SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at 
@@ -253,6 +246,43 @@ func (s *Storage) CompleteTask(ctx context.Context, taskID, userID int) (*model.
 	return &task, nil
 }
 
+func (s *Storage) CompleteTask(ctx context.Context, taskID, userID int) error {
+	start := time.Now()
+	row := s.db.QueryRow(
+		`SELECT id, user_id, name, description, author, status, created_at, updated_at, completed_at 
+         FROM tasks WHERE id = ? AND user_id = ? AND status = 'in_progress'`,
+		taskID, userID,
+	)
+
+	var task model.Task
+	var createdAtStr, completedAtStr, updatedAtStr sql.NullString
+	err := row.Scan(&task.ID, &task.UserID, &task.Name, &task.Description,
+		&task.Author, &task.Status, &createdAtStr, &updatedAtStr, &completedAtStr)
+
+	duration := time.Since(start)
+	s.logDBOp(ctx, "complete_task", duration, err, "task_id", taskID, "user_id", userID)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("task not found or forbidden")
+		}
+		return err
+	}
+
+	now := time.Now()
+	_, err = s.db.Exec(
+		"UPDATE tasks SET status = 'completed', completed_at = ? WHERE id = ?",
+		now, taskID,
+	)
+	if err != nil {
+		return err
+	}
+
+	task.Status = "completed"
+	task.CompletedAt = now
+	return nil
+}
+
 func (s *Storage) DeleteTask(ctx context.Context, id, userId int) error {
 	start := time.Now()
 
@@ -276,7 +306,7 @@ func (s *Storage) DeleteTask(ctx context.Context, id, userId int) error {
 	return nil
 }
 
-func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, editorID int) (*model.Task, error) {
+func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTaskRequest, editorID int) (*TaskWithRelations, error) {
 	start := time.Now()
 
 	var task model.Task
@@ -346,7 +376,12 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	}
 
 	if len(updates) == 0 {
-		return &task, nil // Нечего обновлять
+		t := &TaskWithRelations{
+			Task: task,
+		}
+
+		// tasks, _ := s.GetTasks(ctx, &taskID, nil, 1, 0, nil, "")
+		return t, nil
 	}
 
 	args = append(args, taskID)
@@ -357,32 +392,9 @@ func (s *Storage) UpdateTask(ctx context.Context, taskID int, req model.UpdateTa
 	if err != nil {
 		return nil, err
 	}
+	tasks, _ := s.GetTasks(ctx, &taskID, nil, 1, 0, nil, "")
 
-	return s.GetTaskByID(ctx, taskID)
-}
-
-func (s *Storage) GetUngroupedTasks(ctx context.Context, statusFilter *string) ([]model.Task, error) {
-	start := time.Now()
-	query := `SELECT id, user_id, name, description, author, status, group_id, 
-                     solution_comment, created_at, updated_at, completed_at 
-              FROM tasks WHERE group_id IS NULL`
-	var args []any
-
-	if statusFilter != nil {
-		query += " AND status = ?"
-		args = append(args, *statusFilter)
-	}
-	query += " ORDER BY created_at DESC"
-
-	rows, err := s.db.Query(query, args...)
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_ungrouped_tasks", duration, err, "status_filter", statusFilter)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return s.scanTasks(rows)
+	return &tasks[0], nil
 }
 
 func (s *Storage) CountTasks(ctx context.Context, statusFilter *string, groupID *int) (int, error) {
@@ -409,120 +421,6 @@ func (s *Storage) CountTasks(ctx context.Context, statusFilter *string, groupID 
 	return count, err
 }
 
-func (s *Storage) GetTasksPaginated(ctx context.Context, pq model.PaginationQuery, groupID *int) ([]model.Task, error) {
-	start := time.Now()
-
-	query := `SELECT id, user_id, name, description, author, status, group_id, 
-                     solution_comment, created_at, updated_at, completed_at 
-              FROM tasks WHERE 1=1`
-	var args []any
-
-	if pq.Status != "" {
-		query += " AND status = ?"
-		args = append(args, pq.Status)
-	}
-	if groupID != nil && *groupID > 0 {
-		query += " AND group_id = ?"
-		args = append(args, *groupID)
-	}
-
-	// Сортировка
-	switch pq.Sort {
-	case "created_at:asc":
-		query += " ORDER BY created_at ASC"
-	case "created_at:desc":
-		query += " ORDER BY created_at DESC"
-	case "updated_at:asc":
-		query += " ORDER BY updated_at ASC"
-	case "updated_at:desc":
-		query += " ORDER BY updated_at DESC"
-	default:
-		query += " ORDER BY id DESC"
-	}
-
-	// Пагинация
-	query += " LIMIT ? OFFSET ?"
-	args = append(args, pq.Limit, pq.Offset())
-
-	rows, err := s.db.Query(query, args...)
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_tasks_paginated", duration, err, "pagination", pq)
-
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return s.scanTasks(rows)
-}
-
-func (s *Storage) GetTasksWithRelations(ctx context.Context, statusFilter *string, groupID *int, limit, offset int, sortBy string) ([]TaskWithRelations, error) {
-	start := time.Now()
-	
-	query := `
-		SELECT 
-			t.id, t.user_id, t.name, t.description, t.author, t.status, t.group_id,
-			t.solution_comment, t.created_at, t.updated_at, t.completed_at,
-			u.username as username,
-			g.name as group_name
-		FROM tasks t
-		LEFT JOIN users u ON t.user_id = u.id
-		LEFT JOIN task_group g ON t.group_id = g.id
-		WHERE 1=1
-	`
-	var args []any
-
-	if statusFilter != nil && *statusFilter != "" {
-		query += " AND t.status = ?"
-		args = append(args, *statusFilter)
-	}
-	if groupID != nil && *groupID > 0 {
-		query += " AND t.group_id = ?"
-		args = append(args, *groupID)
-	}
-
-	// Сортировка (базовая валидация на уровне кода)
-	switch sortBy {
-	case "created_at:asc":
-		query += " ORDER BY t.created_at ASC"
-	case "created_at:desc":
-		query += " ORDER BY t.created_at DESC"
-	case "updated_at:asc":
-		query += " ORDER BY t.updated_at ASC"
-	case "updated_at:desc":
-		query += " ORDER BY t.updated_at DESC"
-	default:
-		query += " ORDER BY t.id DESC"
-	}
-
-	if limit > 0 {
-		query += " LIMIT ? OFFSET ?"
-		args = append(args, limit, offset)
-	}
-
-	rows, err := s.db.QueryContext(ctx, query, args...)
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_tasks_with_relations", duration, err, "status", statusFilter, "group_id", groupID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	return s.scanTasksWithRelations(rows)
-}
-
-func (s *Storage) GetTaskWithRelationsByID(ctx context.Context, taskID int) (*TaskWithRelations, error) {
-    tasks, err := s.GetTasksWithRelations(ctx, nil, nil, 1, 0, "id:desc")
-    if err != nil {
-        return nil, err
-    }
-    for _, t := range tasks {
-        if t.Task.ID == taskID {
-            return &t, nil
-        }
-    }
-    return nil, fmt.Errorf("task not found")
-}
 
 // --- РАБОТА С ПОЛЬЗОВАТЕЛЯМИ ---
 
@@ -713,27 +611,13 @@ func (s *Storage) RemoveTaskFromGroup(ctx context.Context, taskID int) error {
 	return err
 }
 
-func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]model.Task, error) {
-	start := time.Now()
-	query := `SELECT id, user_id, name, description, author, status, group_id, created_at, updated_at, completed_at 
-              FROM tasks WHERE group_id = ?`
-	var args []any = []any{groupID}
-
-	if statusFilter != nil {
-		query += " AND status = ?"
-		args = append(args, *statusFilter)
-	}
-	query += " ORDER BY created_at DESC"
-
-	rows, err := s.db.Query(query, args...)
-	duration := time.Since(start)
-	s.logDBOp(ctx, "get_tasks_by_group", duration, err, "group_id", groupID)
+func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]TaskWithRelations, error) {
+	tasks, err := s.GetTasks(ctx, nil, &groupID, 0, 0, statusFilter, "")
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	return s.scanTasks(rows)
+	return tasks, nil
 }
 
 // --- РАБОТА С СЕССИЯМИ ---

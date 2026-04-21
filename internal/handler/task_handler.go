@@ -295,7 +295,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 
 	username := r.Context().Value("username").(string)
 
-	task, err := h.taskService.CompleteTask(ctx, taskID, username)
+	// task, err := h.taskService.CompleteTask(ctx, taskID, username)
+	err = h.taskService.CompleteTask(ctx, taskID, username)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			log.Warn(ctx, "Task not found ", "task_id", taskID)
@@ -312,11 +313,11 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendEvent(h.wsHub, ws.EventTaskCompleted, task)
+	sendEvent(h.wsHub, ws.EventTaskCompleted, nil)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(task)
+	//json.NewEncoder(w).Encode(task)
 }
 
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
