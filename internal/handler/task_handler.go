@@ -22,7 +22,7 @@ type TaskHandler struct {
 func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
 		taskService: service.NewTaskService(storage, storage, storage),
-		wsHub: wsHub,
+		wsHub:       wsHub,
 	}
 }
 
@@ -87,26 +87,26 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(ctx)
 
 	if r.URL.Query().Get("page") != "" || r.URL.Query().Get("limit") != "" {
-        pq := parsePagination(r)
-        
-        var groupID *int
-        if groupParam := chi.URLParam(r, "id"); groupParam != "" {
-            if gid, err := strconv.Atoi(groupParam); err == nil {
-                groupID = &gid
-            }
-        }
-        
-        resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
-        if err != nil {
-            log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
-            http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
-            return
-        }
-        
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(resp)
-        return
-    }
+		pq := parsePagination(r)
+
+		var groupID *int
+		if groupParam := chi.URLParam(r, "id"); groupParam != "" {
+			if gid, err := strconv.Atoi(groupParam); err == nil {
+				groupID = &gid
+			}
+		}
+
+		resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
+		if err != nil {
+			log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
+			http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+		return
+	}
 
 	var statusFilter *string
 
@@ -130,7 +130,7 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(ctx)
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	id, err := strconv.Atoi(path)
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
@@ -153,7 +153,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	log := logger.FromContext(ctx)
 
 	path := strings.TrimPrefix(r.URL.Path, "/api/tasks/")
-	
+
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
@@ -191,7 +191,7 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int {"id": id})
+	sendEvent(h.wsHub, ws.EventTaskDeleted, map[string]int{"id": id})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -351,21 +351,21 @@ func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) 
 }
 
 func parsePagination(r *http.Request) model.PaginationQuery {
-    pq := model.DefaultPagination()
-    
-    if page := r.URL.Query().Get("page"); page != "" {
-        if p, err := strconv.Atoi(page); err == nil {
-            pq.Page = p
-        }
-    }
-    if limit := r.URL.Query().Get("limit"); limit != "" {
-        if l, err := strconv.Atoi(limit); err == nil {
-            pq.Limit = l
-        }
-    }
-    pq.Status = r.URL.Query().Get("status")
-    pq.Sort = r.URL.Query().Get("sort")
-    
-    pq.Validate()
-    return pq
+	pq := model.DefaultPagination()
+
+	if page := r.URL.Query().Get("page"); page != "" {
+		if p, err := strconv.Atoi(page); err == nil {
+			pq.Page = p
+		}
+	}
+	if limit := r.URL.Query().Get("limit"); limit != "" {
+		if l, err := strconv.Atoi(limit); err == nil {
+			pq.Limit = l
+		}
+	}
+	pq.Status = r.URL.Query().Get("status")
+	pq.Sort = r.URL.Query().Get("sort")
+
+	pq.Validate()
+	return pq
 }
