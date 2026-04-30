@@ -46,7 +46,8 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Error(ctx, "CreateTask: decode failed", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -60,7 +61,8 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	task, err := h.taskService.CreateTask(ctx, req.Name, req.Description, req.Author)
 	if err != nil {
 		log.Error(ctx, "CreateTask: storage error", err, "name", req.Name)
-		http.Error(w, "Failed to create task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to create task", http.StatusInternalServerError)
 		return
 	}
 
@@ -99,7 +101,8 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 		resp, err := h.taskService.GetTasksPaginated(ctx, pq, groupID)
 		if err != nil {
 			log.Error(ctx, "GetTasks: service error", err, "pagination", pq)
-			http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+			RespondError(w, err)
+			// http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
 			return
 		}
 
@@ -117,7 +120,8 @@ func (h *TaskHandler) GetTasks(w http.ResponseWriter, r *http.Request) {
 	tasks, err := h.taskService.GetTasks(ctx, statusFilter)
 	if err != nil {
 		log.Error(ctx, "GetTasks: service error", err, "status_filter", statusFilter)
-		http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
 		return
 	}
 
@@ -133,14 +137,16 @@ func (h *TaskHandler) GetTaskById(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
 
 	task, err := h.taskService.GetTaskByID(ctx, id)
 	if err != nil {
 		log.Error(ctx, "GetTaskById: service error", err, "task_id", id)
-		http.Error(w, "Failed to get task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to get task", http.StatusInternalServerError)
 		return
 	}
 
@@ -157,14 +163,16 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
 
 	username, ok := r.Context().Value("username").(string)
 	if !ok {
 		log.Warn(ctx, "username not in context")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		RespondError(w, err)
+		// http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -174,20 +182,23 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		// Если юзер не найден — это баг, 500
 		if strings.Contains(errMsg, "user not found in storage") {
 			log.Error(ctx, "DeleteTask: CRITICAL - user in session not in DB", err, "username", username)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
+			RespondError(w, err)
+			// http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 
 		// Если задача не найдена или доступ запрещён — 404
 		if strings.Contains(errMsg, "not found") || strings.Contains(errMsg, "access denied") {
 			log.Info(ctx, "not found or denied", "taskId", id, "username", username)
-			http.Error(w, "Task not found or access denied", http.StatusNotFound)
+			RespondError(w, err)
+			// http.Error(w, "Task not found or access denied", http.StatusNotFound)
 			return
 		}
 
 		// Всё остальное — 500
 		log.Error(ctx, "DeleteTask: unexpected error", err, "task_id", id, "username", username)
-		http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to delete task", http.StatusInternalServerError)
 		return
 	}
 
@@ -212,7 +223,8 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
 
@@ -222,18 +234,21 @@ func (h *TaskHandler) ClaimTask(w http.ResponseWriter, r *http.Request) {
 
 		if strings.Contains(errMsg, "already claimed") {
 			log.Info(ctx, "already claimed", "taskID", taskID)
-			http.Error(w, "Task already claimed", http.StatusConflict)
+			RespondError(w, err)
+			// http.Error(w, "Task already claimed", http.StatusConflict)
 			return
 		}
 
 		if strings.Contains(errMsg, "fetch") {
 			log.Error(ctx, "ClaimTask: failed to fetch task", err, "task_id", taskID)
-			http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
+			RespondError(w, err)
+			// http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
 			return
 		}
 
 		log.Error(ctx, "ClaimTask: error", err, "task_id", taskID, "username", username)
-		http.Error(w, "Failed to claim task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to claim task", http.StatusInternalServerError)
 		return
 	}
 
@@ -253,7 +268,8 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
 
@@ -264,16 +280,19 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			log.Warn(ctx, "Task not found ", "task_id", taskID)
-			http.Error(w, "Task not found", http.StatusNotFound)
+			RespondError(w, err)
+			// http.Error(w, "Task not found", http.StatusNotFound)
 			return
 		}
 		if strings.Contains(err.Error(), "forbidden") {
 			log.Info(ctx, "Access denied", "taskID", taskID, "username", username)
-			http.Error(w, "You can only complete tasks assigned to you", http.StatusForbidden)
+			RespondError(w, err)
+			// http.Error(w, "You can only complete tasks assigned to you", http.StatusForbidden)
 			return
 		}
 		log.Error(ctx, "Failed to complete task", err, "taskID", taskID)
-		http.Error(w, "Failed to complete task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to complete task", http.StatusInternalServerError)
 		return
 	}
 
@@ -292,7 +311,8 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		log.Info(ctx, "invalid id", "taskID", path)
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
 
@@ -301,7 +321,8 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Warn(ctx, "Invalid request body", "err", err)
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		RespondError(w, err)
+		// http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -309,16 +330,19 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if strings.Contains(err.Error(), "access denied") {
 			log.Info(ctx, "access denied", "taskId", id, "username", username)
-			http.Error(w, "You can't edit this task", http.StatusForbidden)
+			RespondError(w, err)
+			// http.Error(w, "You can't edit this task", http.StatusForbidden)
 			return
 		}
 		if strings.Contains(err.Error(), "not found") {
 			log.Warn(ctx, "Task not found", "task_id", id, "err_msg", err.Error())
-			http.Error(w, "Task not found", http.StatusNotFound)
+			RespondError(w, err)
+			// http.Error(w, "Task not found", http.StatusNotFound)
 			return
 		}
 		log.Error(ctx, "Failed to update task", err, "taskID", id)
-		http.Error(w, "Failed to update task", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to update task", http.StatusInternalServerError)
 		return
 	}
 
@@ -342,7 +366,8 @@ func (h *TaskHandler) GetUngroupedTasks(w http.ResponseWriter, r *http.Request) 
 	tasks, err := h.taskService.GetUngroupedTasks(ctx, statusFilter)
 	if err != nil {
 		log.Error(ctx, "GetUngroupedTasks: service error", err)
-		http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
+		RespondError(w, err)
+		// http.Error(w, "Failed to get ungrouped tasks", http.StatusInternalServerError)
 		return
 	}
 
