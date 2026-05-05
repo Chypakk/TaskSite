@@ -1,0 +1,57 @@
+/* Боковая панель */
+
+.sidebar {
+    max-width: 250px;
+    height: 100vh;
+    font-size: 12px;
+    box-sizing: border-box;
+    -webkit-user-select: none;
+    user-select: none;
+    border-left: 1px solid #000000; /* граница слева */
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+}
+
+.sidebar_collapsed {
+    min-width: 45px;
+    max-width: 45px;
+    cursor: pointer;
+}
+
+.sidebar.collapsed .sidebar_container {
+    display: none;
+}
+
+
+.sidebar_header { /* Заголовок sidebar */
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.sidebar-toggle-btn { /* Кнопка переключения */
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 5px 10px;
+    font-size: 16px;
+    transition: transform 0.3s;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 35px;
+    height: 35px;
+}
+
+.sidebar-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.sidebar.collapsed .sidebar-toggle-btn i { /* Поворот стрелки при сворачивании */
+    transform: rotate(180deg);
+}

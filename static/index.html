@@ -12,6 +12,8 @@
     <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js' integrity='sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI' crossorigin='anonymous'></script>
 
     <link rel='stylesheet' href='css/MainPage.css'>
+    <link rel='stylesheet' href='css/TaskWheel.css'>
+    <link rel='stylesheet' href='css/SideBar.css'>
 
     <script type='module' src="js/app.js"></script>
 
@@ -20,84 +22,91 @@
 
 </head>
 <body>
-    <div id="app" class='container-fluid'>
-        <div class='container-fluid auth-container'>
-            <button class='show-Register-Form btn btn-primary btn-custom' id='regLog' data-bs-toggle='modal' data-bs-target='#authModal'>
-                Зарегистрироваться или войти
-            </button>
-            <button type='submit' class='show-Register-Form btn btn-primary btn-custom' id='quit' hidden>Выйти</button>
-            <input type='text' class='login-text' id='usernameDisplay' disabled style='color: rgb(255, 255, 255);'></input>
-        </div>
-
-        <div class="container-fluid mt-4" id="tasksSection">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                    <h3 class="textUI mb-0">Список задач</h3>
-                    <!-- Фильтр статусов (компактный) -->
-                    <select class="form-select form-select-sm" id="statusFilter" style="width: 180px;">
-                        <option value="">Все статусы</option>
-                        <option value="open">Открытые</option>
-                        <option value="in_progress">В работе</option>
-                        <option value="completed">Выполненные</option>
-                        <option value="closed">Отмененные</option>
-                    </select>
-                    <h6 class="textUI mb-0">Мои задачи</h6>
-                    <label class='switch-green'>
-                        <input type='checkbox' id='my_task'>
-                        <span class='slider-mini'></span>
-                    </label>
+    <div id="app" class="d-flex">
+        <div class="main-content flex-grow-1">
+            <div class="container-fluid mt-4 " id="tasksSection">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <h3 class="textUI mb-0">Список задач</h3>
+                        <!-- Фильтр статусов -->
+                        <select class="form-select form-select-sm" id="statusFilter" style="width: 180px;">
+                            <option value="">Все статусы</option>
+                            <option value="open">Открытые</option>
+                            <option value="in_progress">В работе</option>
+                            <option value="completed">Выполненные</option>
+                            <option value="closed">Отмененные</option>
+                        </select>
+                        <!-- Фильтр групп -->
+                        <select class="form-select form-select-sm" id="groupFilter" style="width: 180px;">
+                        </select>
+                        <h6 class="textUI mb-0">Мои задачи</h6>
+                        <label class='switch-green'>
+                            <input type='checkbox' id='my_task'>
+                            <span class='slider-mini'></span>
+                        </label>
+                        <!-- <div class='form-floating col-md-3'>
+                            <input type='text' class='form-control' id='searchText' placeholder='Текст поиска'>
+                            <label for='floatingInput'>Текст поиска</label>
+                        </div> -->
+                    </div>
+                    <!-- Правая часть: кнопки -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success btn-custom" id="createTaskBtn">
+                            <i class="fas fa-plus"></i> Новая заявка
+                        </button>
+                        <button class="btn btn-secondary btn-custom" id="createGroupBtn">
+                            <i class="fas fa-plus"></i> Новая группа
+                        </button>
+                        <button class="btn btn-primary btn-custom" id="uppdateTaskBtn">
+                            <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
+                        </button>
+                        <button class="btn btn-warning btn-custom" id="randomTaskBtn">
+                            <i class="fas fa-random"></i> Случайная задача
+                        </button>
+                    </div>
                 </div>
-                <!-- Правая часть: кнопки -->
-                <div class="d-flex gap-2">
-                    <button class="btn btn-success btn-custom" id="createTaskBtn">
-                        <i class="fas fa-plus"></i> Новая заявка
-                    </button>
-                    <button class="btn btn-success btn-custom" id="uppdateTaskBtn">
-                        <i class="fa fa-refresh" id="uppdateTaskText"></i> Обновить данные
-                    </button>
-                    <button class="btn btn-warning btn-custom" id="randomTaskBtn">
-                        <i class="fas fa-random"></i> Случайная задача
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Фильтры (опционально) -->
-            <div class="row mb-3" id="taskFilters">
-                <div class="container-fluid">
 
+                <!-- Таблица -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="tasksTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col"></th>
+                                <th scope="col">Номер</th>
+                                <th scope="col">Название</th>
+                                <th scope="col">Описание</th>
+                                <th scope="col">Количество задач</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasksTableBody">
+                        </tbody>
+                    </table>
                 </div>
-            </div>
 
-            <!-- Таблица -->
-            <div class="table-responsive">
-                <table class="table table-hover align-middle" id="tasksTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">№</th>
-                            <th scope="col">Название</th>
-                            <th scope="col">Автор</th>
-                            <th scope="col">Статус</th>
-                            <th scope="col">Взята в работу</th>
-                            <th scope="col">Дата создания</th>
-                            <th scope="col">Дата изменения</th>
-                            <th scope="col">Завершена</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tasksTableBody">
-                        
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Пагинация / загрузка -->
-            <div id="tasksLoading" class="text-center py-3" hidden>
-                <div class="spinner-border text-primary"></div>
-            </div>
-            <div id="tasksEmpty" class="text-center py-3" hidden>
-                <p class="text-muted">Заявок пока нет</p>
+                <!-- Пагинация / загрузка -->
+                <div id="tasksLoading" class="text-center py-3" hidden>
+                    <div class="spinner-border text-primary"></div>
+                </div>
+                <div id="tasksEmpty" class="text-center py-3" hidden>
+                    <p class="text-muted">Заявок пока нет</p>
+                </div>
             </div>
         </div>
 
+        <div id="sidebar" class='sidebar'>
+            <div class="sidebar_header position-relative p-2">
+                <button class="sidebar-toggle-btn" id="sidebarToggle">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+            <div id="sidebarContainer" class="sidebar_container flex-grow-1">
+                <button class='show-Register-Form btn btn-primary btn-custom' id='regLog' data-bs-toggle='modal' data-bs-target='#authModal'>
+                    Зарегистрироваться или войти
+                </button>
+                <button type='submit' class='show-Register-Form btn btn-primary btn-custom' id='quit' hidden>Выйти</button>
+                <input type='text' class='login-text' id='usernameDisplay' disabled style='color: rgb(255, 255, 255);'></input>
+            </div>
+        </div>
     </div>
 
 
@@ -194,7 +203,7 @@
 
     <!-- Окно создания и редактирования заявки -->
     <div class='modal fade' tabindex='-1' id='createTaskModal' aria-hidden='true'>
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content">
                 <!-- Заголовок -->
                 <div class="modal-header">
@@ -207,8 +216,18 @@
 
                 <!-- Тело с формой -->
                 <div class="modal-body">
-                    <form id="taskForm">
+                    <form id="taskForm">     
+                        <!-- Блок ошибок -->
+                        <div class="alert alert-danger alert-dismissible fade show" id="taskErrorAlert" style="display: none;">
+                            <strong>Ошибка!</strong> <span id="taskErrorText"></span>
+                            <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
+                        </div>
                         
+                        <!-- Блок успеха -->
+                        <div class="alert alert-success alert-dismissible fade show" id="taskSuccessAlert" style="display: none;">
+                            <strong>Успех!</strong> <span id="taskSuccessText"></span>
+                        </div>
+
                         <!-- ID -->
                         <input type="hidden" id="taskId">
                         
@@ -242,17 +261,7 @@
                                 <option value="closed">Отменена</option>
                             </select>
                         </div>
-                        
-                        <!-- Блок ошибок -->
-                        <div class="alert alert-danger alert-dismissible fade show" id="taskErrorAlert" style="display: none;">
-                            <strong>Ошибка!</strong> <span id="taskErrorText"></span>
-                            <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
-                        </div>
-                        
-                        <!-- Блок успеха -->
-                        <div class="alert alert-success alert-dismissible fade show" id="taskSuccessAlert" style="display: none;">
-                            <strong>Успех!</strong> <span id="taskSuccessText"></span>
-                        </div>
+
                     </form>
                 </div>
             
@@ -343,6 +352,9 @@
                     <button type="button" class="btn btn-primary me-auto" id="taskEditBtn">
                         <i class="fas fa-edit me-2"></i>Редактировать
                     </button>
+                    <button type="button" class="btn btn-primary me-auto" id="taskPutBtn">
+                        Добавить в группу
+                    </button>
 
                     <!-- Группа кнопок действий (справа) -->
                     <div class="d-flex gap-2">
@@ -357,6 +369,71 @@
                             <i class="fas fa-trash me-2"></i>Удалить
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Окно создания и выбора группы -->
+    <div class='modal fade' tabindex='-1' id='groupModal' aria-hidden='true'>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <!-- Заголовок -->
+                <div class="modal-header">
+                    <h5 class="modal-title" id="groupModalTitle">
+                        <i class="fas fa-file-alt me-2"></i>
+                        Группы
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+
+                <!-- Тело с формой -->
+                <div class="modal-body">
+                    <form id="groupForm">     
+                        <!-- Блок ошибок -->
+                        <div class="alert alert-danger alert-dismissible fade show" id="groupErrorAlert" style="display: none;">
+                            <strong>Ошибка!</strong> <span id="groupErrorText"></span>
+                            <!-- <button type="button" class="btn-close" data-bs-dismiss="alert"></button> -->
+                        </div>
+                        
+                        <!-- Блок успеха -->
+                        <div class="alert alert-success alert-dismissible fade show" id="groupSuccessAlert" style="display: none;">
+                            <strong>Успех!</strong> <span id="groupSuccessText"></span>
+                        </div>
+
+                        <!-- ID -->
+                        <input type="hidden" id="taskId">
+
+                        <!-- Список групп -->
+                        <div class="mb-3 " id='groupsList'>
+                            <label for="groups" class="form-label">Группы</label>
+                            <select class="form-select form-select-sm" id="groups">
+                            </select>
+                        </div>
+
+                        <!-- Наименование -->
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="groupName" placeholder="Наименование" required>
+                            <label for="groupTitle">Наименование *</label>
+                            <div class="invalid-feedback">Введите наименование (мин. 3 символа)</div>
+                        </div>
+                        
+                        <!-- Описание -->
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" id="groupDescription" placeholder="Описание" 
+                                    style="height: 120px; resize: vertical;" required></textarea>
+                            <label for="groupDescription">Описание *</label>
+                            <div class="invalid-feedback">Введите описание проблемы</div>
+                        </div>
+
+                    </form>
+                </div>
+            
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" form="groupForm" class="btn btn-primary" id="groupSaveBtn">
+                        <i class="fas fa-save me-2"></i>Сохранить
+                    </button>
                 </div>
             </div>
         </div>
@@ -432,7 +509,6 @@
             </div>
         </div>
     </div>
-
 
 
 </body>
