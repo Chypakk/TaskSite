@@ -9,50 +9,33 @@ body {
     font-family: Helvetica Arial, sans-serif;
 }
 
-
-
-/* Авторизация и регистрация */
-
-.auth-container{
+#app {
     display: flex;
-    justify-content: flex-end;
-    padding: 0;
-    z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
 }
 
-.btn-custom {
-    margin: 5px;
-    padding: 12px 30px;
-    border-radius: 20px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    border: none;
-    white-space: nowrap; /* запрещает перенос текста */
+/*Общие стили*/
+.textUI{
+    color: aliceblue;
 }
 
-.btn-custom:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+/* Основной контент */
+.main-content {
+    flex-grow: 1;
+    width: 100%;
+    min-width: 0; /* важно для flexbox */
+    overflow-x: hidden;
 }
 
-.login-text{
-    background-color: cornflowerblue;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    margin: 5px;
-    padding: 12px 30px;
-    border-radius: 20px;
-    font-weight: 600;
+#tasksSection { /* Контейнер задач должен занимать всю ширину */
+    width: 100%;
+    padding-right: 20px;
+    padding-left: 20px;
 }
 
-.password-toggle {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #6c757d;
-}
+
 
 /*Таблица*/
 
@@ -65,95 +48,26 @@ body {
     background-color: rgba(13, 110, 253, 0.1); /* Лёгкая подсветка */
 }
 
-/* Визуальный индикатор клика */
-#tasksTableBody tr:active {
+/* Красим саму строку */
+#tasksTableBody .closed-task,
+#tasksTableBody .closed-task td {
+   background-color: rgba(63, 63, 63, 0.432) !important;
+   color: white !important; /* чтобы текст был читаемым */
+}
+
+/* Убираем hover эффект для закрытых задач */
+#tasksTableBody .closed-task:hover,
+#tasksTableBody .closed-task:hover td {
+   background-color: rgba(63, 63, 63, 0.432) !important;
+}
+
+#tasksTableBody tr:active { /* Визуальный индикатор клика */
     background-color: rgba(13, 110, 253, 0.2);
 }
 
-/*Общие стили*/
-
-.textUI{
-    color: aliceblue;
+.element_hidden{
+    display: none
 }
-
-
-/* Контейнер барабана */
-.wheel-container {
-    width: 350px;
-    height: 350px;
-    margin: 20px auto;
-}
-
-/* SVG барабан */
-.wheel-svg {
-    width: 100%;
-    height: 100%;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-    transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); /* Плавное замедление */
-}
-
-/* Указатель (стрелка) */
-.wheel-pointer {
-    top: -40px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-}
-
-/* Сегменты барабана */
-.wheel-segment {
-    cursor: default;
-}
-
-.wheel-segment path {
-    stroke: #fff;
-    stroke-width: 2;
-}
-
-/* Текст на сегментах */
-.wheel-segment text {
-    font-size: 14px;
-    font-weight: bold;
-    fill: #fff;
-    text-anchor: middle;
-    dominant-baseline: middle;
-    pointer-events: none;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-}
-
-/* Кнопка запуска */
-#spinButton {
-    z-index: 5;
-    padding: 15px 40px;
-    font-size: 1.2rem;
-    border-radius: 50px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-}
-
-#spinButton:hover:not(:disabled) {
-    transform: translate(-50%, -50%) scale(1.05);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-}
-
-#spinButton:disabled {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* Анимация вращения */
-.wheel-spinning {
-    animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-
-
 .switch-green {
     position: relative;
     display: inline-block;
@@ -197,4 +111,45 @@ input:checked + .slider-mini {
 
 input:checked + .slider-mini:before {
     transform: translateX(13px);
+}
+
+/* Авторизация и регистрация */
+.auth-container{
+    display: flex;
+    justify-content: flex-end;
+    padding: 0;
+    z-index: 1000; /* чтобы кнопка была поверх остальных элементов */
+}
+
+.btn-custom {
+    margin: 5px;
+    padding: 12px 30px;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    border: none;
+}
+
+.btn-custom:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.login-text{
+    background-color: cornflowerblue;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    margin: 5px;
+    padding: 12px 30px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #6c757d;
 }

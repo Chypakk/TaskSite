@@ -3,7 +3,8 @@ import { TasksService } from '../services/TasksService.js';
 import * as FormatService from '../services/FormatService.js';
 
 export class TaskViewModal {
-    constructor(taskForm) {
+    constructor(taskForm, groupForm) {
+        this.groupForm = groupForm; // Для открытия формы добавления в группу
         this.taskForm = taskForm; // Для открытия формы редактирования
         this.tasksService = new TasksService();
         this.modalElement = null;
@@ -37,6 +38,12 @@ export class TaskViewModal {
                 this.taskForm.openEditMode(taskId);
             }, 300); // Небольшая задержка для плавности
         });
+
+        // Кнопка удалить
+        document.getElementById('taskPutBtn').addEventListener('click', () => {
+            const taskId = this.currentTaskId;
+            this.groupForm.openSelectMode(taskId); 
+        });
         
         // Кнопка удалить
         document.getElementById('taskDeleteBtn').addEventListener('click', () => {
@@ -68,18 +75,6 @@ export class TaskViewModal {
         
         try {
             const task = await this.tasksService.getTask(taskId);
-            // const task =             {
-            //     id: 1,
-            //     name: "1234",
-            //     author: "Иван",
-            //     status: "closed",
-            //     description: "Очень тестовая задача",
-            //     username: "Test",
-            //     created_at: "2026-04-02T05:05:05Z",
-            //     updated_at: "0001-01-01T00:00:00Z",
-            //     completed_at: "",
-            // };
-            
             this.renderTask(task);
             this.bootstrapModal.show();
         } catch (error) {

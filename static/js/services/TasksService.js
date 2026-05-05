@@ -52,64 +52,104 @@ export class TasksService {
         const response = await this.apiService.delete(`/api/tasks/${taskId}`);;
         return await response;
     }
-    
+
+    // async getTask(taskId) {
+    //     const task = {
+    //                 id: 1,
+    //                 group_id: 1,
+    //                 group_name: "ИИ по ТП",
+    //                 group_desc: "ИИ по ТП",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
+    //                 status: "open",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
+    //             };
+    //     return task;
+            
+    // }
+
     // async getAllTasks(status = '') {
     //     let allTaskResult = [];
     //     if(status == ''){
     //         allTaskResult = [
     //             {
     //                 id: 1,
-    //                 name: "Пров1",
-    //                 author: "Иван",
+    //                 group_id: 1,
+    //                 group_name: "ИИ по ТП",
+    //                 group_desc: "ИИ по ТП",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
     //                 status: "open",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             },
     //             {
     //                 id: 2,
-    //                 name: "Пров2",
-    //                 author: "Иван",
-    //                 status: "open",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 group_id: 1,
+    //                 group_name: "ИИ по ТП",
+    //                 group_desc: "ИИ по ТП",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
+    //                 status: "in_progress",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             },
     //             {
     //                 id: 3,
-    //                 name: "Пров3",
-    //                 author: "Иван",
-    //                 status: "in_progress",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
+    //                 status: "completed",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             }
     //         ];
     //     }
     //     else if(status == 'status=open'){
-    //                     return [
+    //             return [
     //             {
     //                 id: 1,
-    //                 name: "Пров1",
-    //                 author: "Иван",
+    //                 group_id: 1,
+    //                 group_name: "ИИ по ТП",
+    //                 group_desc: "ИИ по ТП",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
     //                 status: "open",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             },
     //             {
     //                 id: 2,
-    //                 name: "Пров2",
-    //                 author: "Иван",
+    //                 group_id: 1,
+    //                 group_name: "ИИ по ТП",
+    //                 group_desc: "ИИ по ТП",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
     //                 status: "open",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
+    //             },
+    //             {
+    //                 id: 3,
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
+    //                 status: "open",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             }
     //         ];
     //     }
@@ -117,13 +157,13 @@ export class TasksService {
     //         return[
     //             {
     //                 id: 3,
-    //                 name: "Пров3",
-    //                 author: "Иван",
+    //                 name: "text",
+    //                 description: "йцуйцуйуцйуйц",
+    //                 author: "",
     //                 status: "in_progress",
-    //                 username: "Test",
-    //                 created_at: "02.04.2026",
-    //                 updated_at: "",
-    //                 completed_at: "",
+    //                 created_at: "2026-04-21T06:42:08Z",
+    //                 updated_at: "2026-04-21T12:03:26Z",
+    //                 completed_at: "0001-01-01T00:00:00Z"
     //             }
     //         ];
     //     }

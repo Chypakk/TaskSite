@@ -1,20 +1,22 @@
-import { TasksService } from '../services/TasksService.js';
 
-export class TasksModal{
+import { GroupsService } from '../services/GroupsService.js';
+
+export class GroupModal{
 
     constructor() {
         this.isInitialized = false;
         this.form = null;
         this.bootstrapModal = null;
-        this.isEditMode = false;
-        this.tasksService = new TasksService();  
+        this.isSelectMode = false;
+        this.groupService = new GroupsService(); 
+        this.groupsCash = null; 
     }
 
     initialize() {
         if (this.isInitialized) return;
         
-        this.modalElement = document.getElementById('createTaskModal');
-        this.form = document.getElementById('taskForm');
+        this.modalElement = document.getElementById('groupModal');
+        this.form = document.getElementById('groupForm');
 
 
         if (!this.modalElement|| !this.form) {
@@ -38,7 +40,7 @@ export class TasksModal{
         this.bindEvents();
         this.isInitialized = true;
 
-        console.log('TasksModal initialized successfully');
+        console.log('GroupModal initialized successfully');
     }
 
     bindEvents() {
@@ -51,57 +53,55 @@ export class TasksModal{
         });
 
         // Кнопка создания
-        const createBtn = document.getElementById('createTaskBtn');
+        const createBtn = document.getElementById('createGroupBtn');
         if (createBtn) {
             createBtn.addEventListener('click', () => this.openCreateMode());
         }
+
+        document.getElementById("groups").addEventListener('change', (e) => {
+            const selectedGroupData = this.groupsCash.find(a => a.group_id == e.target.value);
+
+            document.getElementById('groupName').value = selectedGroupData.group_name;
+            document.getElementById('groupDescription').value = selectedGroupData.group_desc;
+        });
     }
 
     // Открытие в режиме создания
     openCreateMode() {
-        this.isEditMode = false;
+        this.isSelectMode = false;
         this.clearForm();
-    
+        this.disabledElements(false);
         // Заголовок
-        document.getElementById('taskModalTitle').innerHTML = 
-            '<i class="fas fa-file-alt me-2"></i>Новая заявка';
-        
-        // Статус по умолчанию
-        const statusAttr = document.getElementById('taskStatus');
-        statusAttr.value = 'open';
-        statusAttr.disabled = true;
-        
+        document.getElementById('groupModalTitle').innerHTML = 
+            '<i class="fas fa-file-alt me-2"></i>Новая группа';
         this.bootstrapModal.show();
     }
 
-    // Открытие в режиме редактирования
-    async openEditMode(taskId) {
-        this.isEditMode = true;
+    // Открытие в режиме выбора
+    async openSelectMode(taskId) {
+        this.isSelectMode = true;
         this.clearForm();
         
         // Показываем загрузку
         this.setLoading(true);
-        
+        this.disabledElements(true);
         try {
-            // Загружаем данные задачи
-            const task = await this.tasksService.getTask(taskId);
-            // Заполняем форму
-            document.getElementById('taskId').value = task.id;
-            document.getElementById('taskName').value = task.name;
-            document.getElementById('taskDescription').value = task.description;
-            document.getElementById('taskAuthor').value = task.author;
 
-            const statusAttr = document.getElementById('taskStatus');
-            statusAttr.value = task.status;
-            statusAttr.disabled = false;
-            
+            uppdateGroupCash();
+            // Заполняем форму
+            document.getElementById('taskId').value = taskId;
+
+            const selectGroup = document.getElementById('groups');
+            selectGroup.innerHTML = '<option value="" disabled selected>Выберите группу</option>'
+            + this.groupsCash.map(g => `<option value="${g.group_id}">${g.group_name}</option>`).join('');
+
             // Заголовок
-            document.getElementById('taskModalTitle').innerHTML = 
-                `<i class="fas fa-edit me-2"></i>Редактирование #${task.id}`;
+            document.getElementById('groupModalTitle').innerHTML = 
+                `<i class="fas fa-edit me-2"></i>Выберите группу`;
             
             this.bootstrapModal.show();
         } catch (error) {
-            this.showError('Не удалось загрузить данные задачи');
+            this.showError('Не удалось загрузить данные');
         } finally {
             this.setLoading(false);
         }
@@ -110,7 +110,7 @@ export class TasksModal{
 
     async handleSubmit(e) {
         e.preventDefault();
-        
+
         // Валидация Bootstrap
         if (!this.form.checkValidity()) {
             this.form.classList.add('was-validated');
@@ -122,10 +122,9 @@ export class TasksModal{
         
         // Собираем данные
         const formData = {
-            name: document.getElementById('taskName').value.trim(),
-            description: document.getElementById('taskDescription').value.trim(),
-            author: document.getElementById('taskAuthor').value.trim(),
-            status: document.getElementById('taskStatus').value
+            group_id: document.getElementById('groups').value,
+            group_name: document.getElementById('groupName').value.trim(),
+            group_desc: document.getElementById('groupDescription').value.trim()
         };
         
         // Валидация длины заголовка
@@ -137,12 +136,12 @@ export class TasksModal{
         
         try {
             // Определяем метод и URL
-            if (this.isEditMode) {
+            if (this.isSelectMode) {
                 const taskId = document.getElementById('taskId').value;
-                const response = await this.tasksService.updateTask(taskId,formData);
+
+                const response = await this.groupService.putTaskInGroup(taskId,formData);
                 if(response.ok){
                     this.showSuccess('Заявка обновлена!');
-                    //console.log('Task update successfully');
                 }
                 else{
                     this.showError(error.message || 'Ошибка при сохранении');
@@ -150,8 +149,8 @@ export class TasksModal{
                     return;
                 }
             } else {
-                await this.tasksService.createTask(formData);
-                this.showSuccess('Заявка создана!');
+                await this.groupService.createGroup(formData);
+                this.showSuccess('Группа создана!');
             }
             
             // Закрываем через 1 секунду
@@ -169,6 +168,24 @@ export class TasksModal{
     }
 
     // Утилиты
+
+    async uppdateGroupCash(){
+        this.groupsCash = await this.groupService.getAllGroups();
+    }
+
+    disabledElements(block) {
+        document.getElementById('groupName').disabled = block;
+        document.getElementById('groupDescription').disabled = block;
+
+        const groupList = document.getElementById('groupsList');
+        if(block){
+            groupList.classList.remove("element_hidden");
+        }
+        else{
+            groupList.classList.add("element_hidden");
+        }     
+    }
+
     clearForm() {
         this.form.reset();
         this.form.classList.remove('was-validated');
@@ -177,14 +194,14 @@ export class TasksModal{
     }
 
     clearAlerts() {
-        document.getElementById('taskErrorAlert').style.display = 'none';
-        document.getElementById('taskSuccessAlert').style.display = 'none';
+        document.getElementById('groupErrorAlert').style.display = 'none';
+        document.getElementById('groupSuccessAlert').style.display = 'none';
     }
 
     showError(message) {
-        document.getElementById('taskErrorText').textContent = message;
-        document.getElementById('taskErrorAlert').style.display = 'block';
-        document.getElementById('taskSuccessAlert').style.display = 'none';
+        document.getElementById('groupErrorText').textContent = message;
+        document.getElementById('groupErrorAlert').style.display = 'block';
+        document.getElementById('groupSuccessAlert').style.display = 'none';
         // Автоскрытие через 5 секунд
         setTimeout(() => {
             this.clearAlerts();
@@ -192,13 +209,13 @@ export class TasksModal{
     }
     
     showSuccess(message) {
-        document.getElementById('taskSuccessText').textContent = message;
-        document.getElementById('taskSuccessAlert').style.display = 'block';
-        document.getElementById('taskErrorAlert').style.display = 'none';
+        document.getElementById('groupSuccessText').textContent = message;
+        document.getElementById('groupSuccessAlert').style.display = 'block';
+        document.getElementById('groupErrorAlert').style.display = 'none';
     }
     
     setLoading(isLoading) {
-        const btn = document.getElementById('taskSaveBtn');
+        const btn = document.getElementById('groupSaveBtn');
         if (isLoading) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Сохранение...';
