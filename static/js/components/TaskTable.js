@@ -226,7 +226,7 @@ export class TasksTable{
         }
 
         const isHidden = contentRow.classList.contains('d-none');
-        const iconCell = headerRow.querySelector('.toggle-icon');
+        //const iconCell = headerRow.querySelector('.toggle-icon');
         if(isHidden){
             //добавить смену иконки iconCell
             contentRow.classList.remove('d-none');

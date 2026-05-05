@@ -8,9 +8,10 @@ export class GroupsService {
     async getAllGroups() {
         const response = await this.apiService.get('/api/groups', null);
         const allGroups = [{ group_id: -1, group_name: "Не групированные задачи", group_desc: "", created_at: `${Date.now()}`,}];
-
+        const result = await response.json();
         if(response.ok){
-            allGroups = allGroups.concat(await response.json());
+            allGroups = allGroups.concat(result);
+            return allGroups;
         }
 
         return await response.json();
