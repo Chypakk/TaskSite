@@ -128,7 +128,7 @@ export class GroupModal{
         };
         
         // Валидация длины заголовка
-        if (formData.name.length < 3) {
+        if (formData.group_name.length < 3) {
             this.showError('Наименование должно быть не менее 3 символов');
             this.setLoading(false);
             return;

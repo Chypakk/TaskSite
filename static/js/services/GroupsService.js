@@ -25,6 +25,7 @@ export class GroupsService {
     async createGroup(formData) {
         const response = await this.apiService.post(`/api/groups`, formData);
         return await response;
+        // return new Response;
     }
 
     // async getAllGroups() {
