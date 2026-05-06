@@ -24,6 +24,10 @@ export class TasksTable{
         document.addEventListener('task:saved', () => {
             this.fetchData(); // Перезагружаем таблицу
         });
+        
+        document.getElementById('tasksTableBody').addEventListener('click', (e)=>{
+            this.selectTaskGroup(e);
+        });
     }
     
     async fetchData(showLoading = true, status) {
@@ -104,10 +108,6 @@ export class TasksTable{
             tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; padding: 20px;">Нет данных</td></tr>`;
             return;
         }
-
-        tbody.addEventListener('click', (e)=>{
-            this.selectTaskGroup(e);
-        });
         
         const formatingData = this.formatingData(data);
 
@@ -226,7 +226,7 @@ export class TasksTable{
         }
 
         const isHidden = contentRow.classList.contains('d-none');
-        const iconCell = headerRow.querySelector('.toggle-icon');
+        //const iconCell = headerRow.querySelector('.toggle-icon');
         if(isHidden){
             //добавить смену иконки iconCell
             contentRow.classList.remove('d-none');

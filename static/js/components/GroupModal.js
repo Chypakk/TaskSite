@@ -87,7 +87,7 @@ export class GroupModal{
         this.disabledElements(true);
         try {
 
-            uppdateGroupCash();
+            await this.uppdateGroupCash();
             // Заполняем форму
             document.getElementById('taskId').value = taskId;
 
@@ -124,11 +124,11 @@ export class GroupModal{
         const formData = {
             group_id: document.getElementById('groups').value,
             group_name: document.getElementById('groupName').value.trim(),
-            group_desc: document.getElementById('groupDescription').value.trim()
+            group_desc: document.getElementById('groupDescription').value?.trim()
         };
         
         // Валидация длины заголовка
-        if (formData.name.length < 3) {
+        if (formData.group_name.length < 3) {
             this.showError('Наименование должно быть не менее 3 символов');
             this.setLoading(false);
             return;
