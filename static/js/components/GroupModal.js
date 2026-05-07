@@ -125,16 +125,20 @@ export class GroupModal{
         
         // Показываем загрузку
         this.setLoading(true);
-        this.disabledElements(true);
+        this.disabledElements(false);
         try {
             await this.uppdateGroupCash();
 
-            document.getElementById('groupId') = groupId;
-
+            document.getElementById('groupId').value = groupId;
+            const selectedGroupData = this.groupsCash.find(a => a.group_id == groupId);
+            document.getElementById('groupName').value = selectedGroupData.group_name;
+            document.getElementById('groupDescription').value = selectedGroupData.group_desc;
+            
             // Заголовок
             document.getElementById('groupModalTitle').innerHTML = 
                 `<i class="fas fa-edit me-2"></i>Изменение группы`;
-            
+
+
             this.bootstrapModal.show();
         } catch (error) {
             this.showError('Не удалось загрузить данные');
