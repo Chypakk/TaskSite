@@ -7,6 +7,7 @@ type TaskDTO struct {
 	GroupID         *int      `json:"group_id,omitempty"`
 	Username        string    `json:"username,omitempty"`
 	GroupName       string    `json:"group_name,omitempty"`
+	GroupDesc       string    `json:"group_desc,omitempty"`
 	Name            string    `json:"name"`
 	Description     string    `json:"description"`
 	Author          string    `json:"author"`

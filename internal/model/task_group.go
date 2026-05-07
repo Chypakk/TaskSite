@@ -11,11 +11,11 @@ type TaskGroup struct {
 
 // Для создания группы
 type CreateGroupRequest struct {
-    Name        string `json:"name" example:"ИИ ТП"`
-    Description string `json:"description,omitempty" example:"Задачи по ИИ"`
+    Name        string `json:"group_name" example:"ИИ ТП"`
+    Description string `json:"group_desc,omitempty" example:"Задачи по ИИ"`
 }
 
 // Для привязки задачи к группе
 type AssignTaskToGroupRequest struct {
-    GroupID int `json:"group_id" example:"1"`
+    GroupID int `json:"group_id,string" example:"1"`
 }

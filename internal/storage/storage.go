@@ -30,6 +30,7 @@ type TaskWithRelations struct {
 	// GroupID   int    `json:"group_id,omitempty"`
 	Username  string `json:"username,omitempty"`
 	GroupName string `json:"group_name,omitempty"`
+	GroupDesc string `json:"group_desc,omitempty"`
 }
 
 func ConnectDB(dbPath string) (*Storage, error) {
@@ -98,7 +99,7 @@ func (s *Storage) GetTasks(ctx context.Context, taskID, groupID *int, limit, off
 			t.id, t.user_id, t.name, t.description, t.author, t.status, t.group_id,
 			t.solution_comment, t.created_at, t.updated_at, t.completed_at,
 			u.username as username,
-			g.name as group_name
+			g.name as group_name, g.description as group_desc
 		FROM tasks t
 		LEFT JOIN users u ON t.user_id = u.id
 		LEFT JOIN task_group g ON t.group_id = g.id
@@ -777,13 +778,13 @@ func (s *Storage) scanTasksWithRelations(rows *sql.Rows) ([]TaskWithRelations, e
 	result := make([]TaskWithRelations, 0)
 	for rows.Next() {
 		var t TaskWithRelations
-		var createdAtStr, updatedAtStr, completedAtStr, username, groupName sql.NullString
+		var createdAtStr, updatedAtStr, completedAtStr, username, groupName, groupDesc sql.NullString
 		
 		err := rows.Scan(
 			&t.Task.ID, &t.Task.UserID, &t.Task.Name, &t.Task.Description, &t.Task.Author,
 			&t.Task.Status, &t.Task.GroupID, &t.Task.SolutionComment,
 			&createdAtStr, &updatedAtStr, &completedAtStr,
-			&username, &groupName,
+			&username, &groupName, &groupDesc,
 		)
 		if err != nil {
 			return nil, err
@@ -803,6 +804,9 @@ func (s *Storage) scanTasksWithRelations(rows *sql.Rows) ([]TaskWithRelations, e
 		}
 		if groupName.Valid {
 			t.GroupName = groupName.String
+		}
+		if groupDesc.Valid {
+			t.GroupDesc = groupDesc.String
 		}
 		
 		result = append(result, t)
