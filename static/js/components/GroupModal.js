@@ -133,7 +133,7 @@ export class GroupModal{
             const selectedGroupData = this.groupsCash.find(a => a.group_id == groupId);
             document.getElementById('groupName').value = selectedGroupData.group_name;
             document.getElementById('groupDescription').value = selectedGroupData.group_desc;
-            
+
             // Заголовок
             document.getElementById('groupModalTitle').innerHTML = 
                 `<i class="fas fa-edit me-2"></i>Изменение группы`;
@@ -185,6 +185,7 @@ export class GroupModal{
         
         try {
             // Определяем метод и URL
+            let response = null;
             switch(this.curentMode){
 
                 case this.dialogMode.create:
@@ -195,7 +196,7 @@ export class GroupModal{
                 case this.dialogMode.select:
                     const taskId = document.getElementById('taskId').value;
 
-                    const response = await this.groupService.putTaskInGroup(taskId,formData);
+                    response = await this.groupService.putTaskInGroup(taskId,formData);
                     if(response.ok){
                         this.showSuccess('Заявка добавлена в группу!');
                     }
