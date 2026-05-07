@@ -137,8 +137,8 @@ func (h *TaskGroupHandler) EditGroup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Group not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "Failed to assign task to group", http.StatusInternalServerError)
+		http.Error(w, "Failed to edit group", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }
