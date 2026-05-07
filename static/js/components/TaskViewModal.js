@@ -72,7 +72,7 @@ export class TaskViewModal {
 
         // Глобальный слушатель для открытия задачи
         document.addEventListener('task:view', (e) => {
-            this.taskViewModal.showTask(e.detail.taskId);
+            this.showTask(e.detail.taskId);
         });
     }
     
