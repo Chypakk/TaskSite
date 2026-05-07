@@ -98,7 +98,7 @@ export class TasksTable{
             if (editBtn) {
                 editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();  //Останавливаем всплытие события!
-
+                    
                     document.dispatchEvent(new CustomEvent('group:edit', { 
                         detail: { groupId: group.id } 
                     }));
