@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	// "github.com/coder/websocket"
 	"github.com/go-chi/chi/v5"
 
 	"tasksite/internal/handler"
@@ -64,10 +63,7 @@ func main() {
 	r.Post("/api/login", userHandler.Login)
 	r.Post("/api/me", userHandler.GetMe)
 
-	// r.Get("/api/ws", wsHandler.ServeWS)
-
 	r.Group(func(r chi.Router) {
-		// r.Use(handler.RequestLogger)
 		r.Use(sessionStore.AuthMiddleware)
 
 		r.Post("/api/logout", userHandler.Logout)
@@ -110,40 +106,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// mux.HandleFunc("/api/ws", func(w http.ResponseWriter, r *http.Request) {
-	//     // Авторизация вручную
-	//     token := r.URL.Query().Get("token")
-	// 	ctx := r.Context()
-	//     if token == "" {
-	//         token = r.Header.Get("X-Session-Token")
-	//     }
-	//     username, ok := sessionStore.ValidateSession(ctx, token)
-	//     if !ok {
-	//         http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	//         return
-	//     }
-
-	//     conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-	//         InsecureSkipVerify: true,
-	//     })
-	//     if err != nil {
-	//         log.Printf("WS accept failed: %v", err)
-	//         return
-	//     }
-
-	//     ctx, cancel := context.WithTimeout(r.Context(), 24*time.Hour)
-	//     defer cancel()
-
-	//     client := ws.NewClient(wsHub, conn)
-	//     log.Printf("WS connected: %s", username)
-	//     client.Start(ctx)
-	//     log.Printf("WS disconnected: %s", username)
-	// })
-
-	// 1. WebSocket роут — ПРЯМОЙ, без Chi middleware!
 	mux.HandleFunc("/api/ws", wsHandler.ServeWS)
-
-	// 2. Все остальные роуты — через Chi
 	mux.Handle("/", r)
 
 	// Запускаем сервер

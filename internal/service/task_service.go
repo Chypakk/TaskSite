@@ -198,6 +198,7 @@ func (s *TaskService) taskWithRelationsToDTO(t storage.TaskWithRelations) dto.Ta
 		GroupID:         t.GroupID,
 		Username:        t.Username,
 		GroupName:       t.GroupName,
+		GroupDesc:       t.GroupDesc,
 		Name:            t.Task.Name,
 		Description:     t.Task.Description,
 		Author:          t.Task.Author,
