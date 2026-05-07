@@ -12,11 +12,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"tasksite"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +32,7 @@ import (
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
+
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -102,8 +106,28 @@ func main() {
 	})
 	r.Mount("/swagger/", httpSwagger.WrapHandler)
 
-	fs := http.FileServer(http.Dir("../../static"))
-	r.Handle("/*", fs)
+	// fs := http.FileServer(http.Dir("../../static"))
+	// r.Handle("/*", fs)
+
+	contentStatic, _ := fs.Sub(tasksite.StaticFS, "static")
+    fileServer := http.FileServer(http.FS(contentStatic))
+    
+	// r.Route("/static", func(r chi.Router) {
+	// 	r.Handle("/*", http.StripPrefix("/static/", fileServer))
+	// })
+
+	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+        index, err := contentStatic.Open("index.html")
+        if err != nil {
+            http.Error(w, "Index not found", http.StatusNotFound)
+            return
+        }
+        defer index.Close()
+
+        http.ServeContent(w, r, "index.html", time.Now(), index.(io.ReadSeeker))
+    })
 
 	mux := http.NewServeMux()
 

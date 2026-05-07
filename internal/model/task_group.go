@@ -17,5 +17,5 @@ type CreateGroupRequest struct {
 
 // Для привязки задачи к группе
 type AssignTaskToGroupRequest struct {
-    GroupID int `json:"group_id,string" example:"1"`
+    GroupID int `json:"group_id" example:"1"`
 }
