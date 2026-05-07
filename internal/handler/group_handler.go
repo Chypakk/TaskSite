@@ -93,7 +93,6 @@ func (h *TaskGroupHandler) AssignTaskToGroup(w http.ResponseWriter, r *http.Requ
 	path = strings.TrimSuffix(path, "/group")
 	taskID, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-        
 		http.Error(w, "Invalid task ID", http.StatusBadRequest)
 		return
 	}
@@ -106,6 +105,34 @@ func (h *TaskGroupHandler) AssignTaskToGroup(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := h.groupService.AssignTaskToGroup(ctx, taskID, req.GroupID); err != nil {
+		if strings.Contains(err.Error(), "group not found") {
+			http.Error(w, "Group not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to assign task to group", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *TaskGroupHandler) EditGroup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	log := logger.FromContext(ctx)
+
+	groupID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Invalid group ID", http.StatusBadRequest)
+		return
+	}
+
+	var req model.CreateGroupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        log.Error(ctx, "Error json parse", err, err)    
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.groupService.EditGroup(ctx, groupID, req.Name, req.Description); err != nil {
 		if strings.Contains(err.Error(), "group not found") {
 			http.Error(w, "Group not found", http.StatusNotFound)
 			return

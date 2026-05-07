@@ -621,6 +621,18 @@ func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter
 	return tasks, nil
 }
 
+func (s *Storage) EditGroup(ctx context.Context, groupID int, name, description string) error {
+	start := time.Now()
+	_, err := s.db.ExecContext(ctx, "UPDATE task_group SET name = ?, description = ? WHERE id = ?", name, description, groupID)
+	duration := time.Since(start)
+	s.logDBOp(ctx, "edit_group", duration, err, 
+		"group_id", groupID, 
+		"name", name, 
+		"description", description,
+	)
+	return err
+}
+
 // --- РАБОТА С СЕССИЯМИ ---
 
 func (s *Storage) CreateSession(ctx context.Context, token, username string, expiresAt time.Time) error {

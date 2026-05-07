@@ -87,6 +87,7 @@ func main() {
 			r.Post("/", groupHandler.CreateGroup)
 			r.Get("/", groupHandler.GetGroups)
 			r.Get("/{id}/tasks", groupHandler.GetGroupTasks)
+			r.Put("/{id}", groupHandler.EditGroup)
 		})
 	})
 
