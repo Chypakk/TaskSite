@@ -53,23 +53,23 @@ export class TasksService {
         return await response;
     }
 
-    // async getTask(taskId) {
-    //     const task = {
-    //                 id: 1,
-    //                 group_id: 1,
-    //                 group_name: "ИИ по ТП",
-    //                 group_desc: "ИИ по ТП",
-    //                 name: "text",
-    //                 description: "йцуйцуйуцйуйц",
-    //                 author: "",
-    //                 status: "open",
-    //                 created_at: "2026-04-21T06:42:08Z",
-    //                 updated_at: "2026-04-21T12:03:26Z",
-    //                 completed_at: "0001-01-01T00:00:00Z"
-    //             };
-    //     return task;
+    async getTask(taskId) {
+        const task = {
+                    id: 1,
+                    group_id: 1,
+                    group_name: "ИИ по ТП",
+                    group_desc: "ИИ по ТП",
+                    name: "text",
+                    description: "йцуйцуйуцйуйц",
+                    author: "",
+                    status: "open",
+                    created_at: "2026-04-21T06:42:08Z",
+                    updated_at: "2026-04-21T12:03:26Z",
+                    completed_at: "0001-01-01T00:00:00Z"
+                };
+        return task;
             
-    // }
+    }
 
     // async getAllTasks(status = '') {
     //     let allTaskResult = [];

@@ -24,12 +24,13 @@ export class TaskViewModal {
             backdrop: true,
             keyboard: true
         });
-        
+
+        this.bindButtons();
         this.bindEvents();
         console.log('TaskViewModal initialized successfully');
     }
-    
-    bindEvents() {
+    //Привязываем действия к кнопкам 
+    bindButtons() {
         // Кнопка редактировать
         document.getElementById('taskEditBtn').addEventListener('click', () => {
             this.bootstrapModal.hide();
@@ -59,9 +60,19 @@ export class TaskViewModal {
         document.getElementById('taskClaimBtn').addEventListener('click', () => {
             this.handleClaim();
         });
+
+    }
+
+        
+    bindEvents() {
         // Очистка при закрытии
         this.modalElement.addEventListener('hidden.bs.modal', () => {
             this.currentTaskId = null;
+        });
+
+        // Глобальный слушатель для открытия задачи
+        document.addEventListener('task:view', (e) => {
+            this.taskViewModal.showTask(e.detail.taskId);
         });
     }
     

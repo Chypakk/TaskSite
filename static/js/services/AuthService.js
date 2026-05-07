@@ -83,7 +83,7 @@ export class AuthService {
                 if (response.ok){
                     const userData = await response.json();
                     this.currentUser = new User(userData);
-
+                    
                     return AuthResult.success(this.currentUser);
                 }
                 this.clearStorage();

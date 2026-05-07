@@ -60,13 +60,6 @@ class Program {
 
         this.bindButtons();
         this.bindEvents();
-
-        await this.groupModal.uppdateGroupCash();
-
-        const selectGroup = document.getElementById('groupFilter');
-        selectGroup.innerHTML = '<option value="" disabled selected>Выберите группу</option>'
-            + this.groupModal.groupsCash.map(g => `<option value="${g.group_id}">${g.group_name}</option>`).join('');
-
     }
 
     //Привязываем действия к кнопкам 
@@ -97,19 +90,18 @@ class Program {
     }
 
     bindEvents() {
-        // Глобальный слушатель для открытия задачи
-        document.addEventListener('task:view', (e) => {
-            this.taskViewModal.showTask(e.detail.taskId);
-        });
-
-        // Обновление таблицы после удаления
-        document.addEventListener('task:deleted', () => {
-            this.tasksTable.fetchData();
-        });
-
         document.getElementById('statusFilter').addEventListener('change',(e)=>{
             this.tasksTable.fetchData(true, e.target.value != ''? `status=${e.target.value}`: '');
         });
+    }
+
+    async fillGroupFiltr(){
+        await this.groupModal.uppdateGroupCash();
+
+        const selectGroup = document.getElementById('groupFilter');
+        selectGroup.innerHTML = '<option value="" disabled selected>Выберите группу</option>'
+            + this.groupModal.groupsCash.map(g => `<option value="${g.group_id}">${g.group_name}</option>`).join('');
+
     }
 
 
@@ -148,7 +140,8 @@ class Program {
     async onAuthSuccess(user) {
         try {
             console.log('User authenticated:', user.username);
-            this.updateUserInterface(user);
+            await this.updateUserInterface(user);
+            await this.fillGroupFiltr();
         } catch (error) {
             console.error('Error handling auth success:', error);
         }

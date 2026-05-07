@@ -24,6 +24,11 @@ export class TasksTable{
         document.addEventListener('task:saved', () => {
             this.fetchData(); // Перезагружаем таблицу
         });
+
+        // Обновление таблицы после удаления
+        document.addEventListener('task:deleted', () => {
+            this.fetchData();
+        });
         
         document.getElementById('tasksTableBody').addEventListener('click', (e)=>{
             this.selectTaskGroup(e);
@@ -45,7 +50,7 @@ export class TasksTable{
             
             const data = await this.tasksService.getAllTasks(status);
             // this.renderTable(data);
-            this.newrenderTable(data);
+            this.newRenderTable(data);
 
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
@@ -59,48 +64,7 @@ export class TasksTable{
         }
     }
 
-
-    renderTable(data) {
-        const tbody = document.getElementById('tasksTableBody');
-        tbody.innerHTML = '';
-        
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; padding: 20px;">Нет данных</td></tr>`;
-            return;
-        }
-        
-        data.forEach(item => {
-            const row = document.createElement('tr');
-            row.setAttribute('data-task-id', item.id);
-            row.setAttribute('id', `${item.name} ${item.id}`);
-            // Формирование ячеек с применением классов для стилизации
-            row.innerHTML = `
-                <td>${item.id}</td>
-                <td>${item.name}</td>
-                <td>${item.author}</td>
-                <td class="highlight">${FormatService.getStatusText(item.status)}</td>
-                <td>${item.username == null? "-": item.username}</td>
-                <td>${FormatService.formatDate(item.created_at)}</td>
-                <td>${FormatService.formatDate(item.updated_at)}</td>
-                <td>${FormatService.formatDate(item.completed_at)}</td>
-            `;
-            // Клик по строке
-            row.addEventListener('click', (e) => {
-                // Игнорируем клик по кнопкам действий (если они есть)
-                if (e.target.closest('.btn')) return;
-                
-                // Генерируем событие или сразу открываем
-                document.dispatchEvent(new CustomEvent('task:view', { 
-                    detail: { taskId: item.id } 
-                }));
-            });
-            
-            tbody.appendChild(row);
-        });
-    }
-
-
-    newrenderTable(data) {
+    newRenderTable(data) {
         const tbody = document.getElementById('tasksTableBody');
         tbody.innerHTML = '';
         
@@ -121,22 +85,41 @@ export class TasksTable{
                 <td>${group.name}</td>
                 <td>${group.desc}</td>
                 <td>${group.tasks.length} задач</td>
+                <td>
+                    <button type="button" class="btn btn-primary btn-edit-group" data-group-id="${group.id}>
+                        <i class="fas fa-edit me-2"></i>Редактировать
+                    </button>
+                </td>
             `;
             tbody.appendChild(groupRow);
+
+            //Добавляем обработчик на кнопку редактирования
+            const editBtn = groupRow.querySelector('.btn-edit-group');
+            if (editBtn) {
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();  //Останавливаем всплытие события!
+
+                    document.dispatchEvent(new CustomEvent('group:edit', { 
+                        detail: { groupId: group.id } 
+                    }));
+                });
+            }
 
             // Создаем строку-контейнер
             const tasksContainer = document.createElement('tr');     
             tasksContainer.setAttribute('data-group-id', group.id);
-            tasksContainer.classList.add('group-content');
-            tasksContainer.classList.add('d-none');
+            tasksContainer.classList.add('group-content', 'd-none');
 
             const cell = document.createElement('td');
-            cell.setAttribute('colspan', '5');  // По количеству колонок в шапке группы
+            cell.setAttribute('colspan', '6');  // По количеству колонок в шапке группы
             cell.classList.add('p-0');  // Убираем отступы (Bootstrap класс)
 
             const tasksTable = document.createElement("table");
             tasksTable.classList.add('table', 'table-hover', 'align-middle', 'mb-0');
-            tasksTable.style.width = '100%';
+            tasksTable.style.cssText = `
+                width: 95%;
+                margin-left: auto;
+            `;
             tasksTable.innerHTML = `
                         <thead class="table-light">
                             <tr>

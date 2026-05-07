@@ -7,10 +7,16 @@ export class GroupModal{
         this.isInitialized = false;
         this.form = null;
         this.bootstrapModal = null;
-        this.isSelectMode = false;
         this.groupService = new GroupsService(); 
-        this.groupsCash = null; 
+        this.groupsCash = null;
+        this.dialogMode = {
+            create: 0,
+            select: 1,
+            edit: 2,
+        };
+        this.curentMode = this.dialogMode.create;
     }
+
 
     initialize() {
         if (this.isInitialized) return;
@@ -64,11 +70,16 @@ export class GroupModal{
             document.getElementById('groupName').value = selectedGroupData.group_name;
             document.getElementById('groupDescription').value = selectedGroupData.group_desc;
         });
+
+        // Открытие редактора группы
+        document.addEventListener('group:edit', (e) => {
+            this.openEditMode(e.detail.groupId);
+        });
     }
 
     // Открытие в режиме создания
     openCreateMode() {
-        this.isSelectMode = false;
+        this.curentMode = this.dialogMode.create;
         this.clearForm();
         this.disabledElements(false);
         // Заголовок
@@ -79,7 +90,7 @@ export class GroupModal{
 
     // Открытие в режиме выбора
     async openSelectMode(taskId) {
-        this.isSelectMode = true;
+        this.curentMode = this.dialogMode.select;
         this.clearForm();
         
         // Показываем загрузку
@@ -107,6 +118,31 @@ export class GroupModal{
         }
     }
 
+    // Открытие в режиме изменения
+    async openEditMode(groupId) {
+        this.curentMode = this.dialogMode.edit;
+        this.clearForm();
+        
+        // Показываем загрузку
+        this.setLoading(true);
+        this.disabledElements(true);
+        try {
+            await this.uppdateGroupCash();
+
+            document.getElementById('groupId') = groupId;
+
+            // Заголовок
+            document.getElementById('groupModalTitle').innerHTML = 
+                `<i class="fas fa-edit me-2"></i>Изменение группы`;
+            
+            this.bootstrapModal.show();
+        } catch (error) {
+            this.showError('Не удалось загрузить данные');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+
 
     async handleSubmit(e) {
         e.preventDefault();
@@ -119,10 +155,19 @@ export class GroupModal{
         
         this.setLoading(true);
         this.clearAlerts();
-        
+
+        let groupId = 0;
+
+        if(document.getElementById('groupId').value != ""){
+            groupId = Number.parseInt(document.getElementById('groupId').value);
+        }
+        else{
+            groupId = Number.parseInt(document.getElementById('groups').value);
+        }            
+
         // Собираем данные
         const formData = {
-            group_id: document.getElementById('groups').value,
+            group_id:  groupId,
             group_name: document.getElementById('groupName').value.trim(),
             group_desc: document.getElementById('groupDescription').value?.trim()
         };
@@ -136,21 +181,40 @@ export class GroupModal{
         
         try {
             // Определяем метод и URL
-            if (this.isSelectMode) {
-                const taskId = document.getElementById('taskId').value;
+            switch(this.curentMode){
 
-                const response = await this.groupService.putTaskInGroup(taskId,formData);
-                if(response.ok){
-                    this.showSuccess('Заявка обновлена!');
-                }
-                else{
-                    this.showError(error.message || 'Ошибка при сохранении');
-                    this.setLoading(false);
-                    return;
-                }
-            } else {
-                await this.groupService.createGroup(formData);
-                this.showSuccess('Группа создана!');
+                case this.dialogMode.create:
+                    await this.groupService.createGroup(formData);
+                    this.showSuccess('Группа создана!');
+                break;
+
+                case this.dialogMode.select:
+                    const taskId = document.getElementById('taskId').value;
+
+                    const response = await this.groupService.putTaskInGroup(taskId,formData);
+                    if(response.ok){
+                        this.showSuccess('Заявка добавлена в группу!');
+                    }
+                    else{
+                        this.showError(error.message || 'Ошибка при сохранении');
+                        this.setLoading(false);
+                        return;
+                    }
+                break;
+
+                case this.dialogMode.edit:
+                   
+                    response = await this.groupService.editGroup(groupId,formData);
+                    if(response.ok){
+                        this.showSuccess('Группа изменена!');
+                    }
+                    else{
+                        this.showError(error.message || 'Ошибка при сохранении');
+                        this.setLoading(false);
+                        return;
+                    }
+                break;
+
             }
             
             // Закрываем через 1 секунду
@@ -190,6 +254,7 @@ export class GroupModal{
         this.form.reset();
         this.form.classList.remove('was-validated');
         document.getElementById('taskId').value = '';
+        document.getElementById('groupId').value = '';
         this.clearAlerts();
     }
 
