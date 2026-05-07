@@ -12,5 +12,6 @@ type TaskGroupRepository interface {
 	GetTaskGroupById(ctx context.Context, id int) (*model.TaskGroup, error)
 	AssignTaskToGroup(ctx context.Context, taskID, groupID int) error
 	RemoveTaskFromGroup(ctx context.Context, taskID int) error
+	EditGroup(ctx context.Context, groupID int, name, description string) error
 	GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]storage.TaskWithRelations, error)
 }

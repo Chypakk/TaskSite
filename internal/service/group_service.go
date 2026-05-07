@@ -62,6 +62,14 @@ func (g *GroupService) RemoveTaskFromGroup(ctx context.Context, taskID int) erro
 	return nil
 }
 
+func (g *GroupService) EditGroup(ctx context.Context, groupID int, name, description string) error {
+	if err := g.repo.EditGroup(ctx, groupID, name, description); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (g *GroupService) GetTasksByGroup(ctx context.Context, groupID int, statusFilter *string) ([]dto.TaskDTO, error) {
 	tasks, err := g.repo.GetTasksByGroup(ctx, groupID, statusFilter)
 	if err != nil {
