@@ -35,7 +35,30 @@ func Load() (Config, error) {
 		DBName:     os.Getenv("DB_NAME"),
 	}
 
+	if err := cfg.validate(); err != nil {
+		return Config{}, err
+	}
+
 	return cfg, nil
+}
+
+func (c *Config) validate() error {
+	required := map[string]string{
+		"SERVER_PORT": c.ServerPort,
+		"DB_DRIVER":   c.DBDriver,
+		"DB_HOST":     c.DBHost,
+		"DB_PORT":     c.DBPort,
+		"DB_USER":     c.DBUser,
+		"DB_NAME":     c.DBName,
+		// DB_PASS не проверяем на пустоту, т.к. иногда пароль действительно пустой
+	}
+
+	for k, v := range required {
+		if v == "" {
+			return fmt.Errorf("missing required env var: %s", k)
+		}
+	}
+	return nil
 }
 
 // поиск env файла

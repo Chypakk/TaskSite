@@ -107,7 +107,7 @@ func (s *Storage) GetTasks(ctx context.Context, taskID, groupID *int, limit, off
 			g.name as group_name, g.description as group_desc
 		FROM tasks t
 		LEFT JOIN users u ON t.user_id = u.id
-		LEFT JOIN task_group g ON t.group_id = g.id
+		LEFT JOIN task_groups g ON t.group_id = g.id
 		WHERE 1=1
 	`
 	var args []any
@@ -517,11 +517,11 @@ func (s *Storage) GetUserById(ctx context.Context, id int) (*model.User, error) 
 func (s *Storage) CreateTaskGroup(ctx context.Context, name, description string) (*model.TaskGroup, error) {
 	start := time.Now()
 	res, err := s.db.Exec(
-		"INSERT INTO task_group (name, description) VALUES (?, ?)",
+		"INSERT INTO task_groups (name, description) VALUES (?, ?)",
 		name, description,
 	)
 	duration := time.Since(start)
-	s.logDBOp(ctx, "create_task_group", duration, err, "name", name)
+	s.logDBOp(ctx, "create_task_groups", duration, err, "name", name)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 			return nil, fmt.Errorf("group with this name already exists")
@@ -539,9 +539,9 @@ func (s *Storage) CreateTaskGroup(ctx context.Context, name, description string)
 
 func (s *Storage) GetTaskGroups(ctx context.Context) ([]model.TaskGroup, error) {
 	start := time.Now()
-	rows, err := s.db.Query("SELECT id, name, description, created_at FROM task_group ORDER BY name")
+	rows, err := s.db.Query("SELECT id, name, description, created_at FROM task_groups ORDER BY name")
 	duration := time.Since(start)
-	s.logDBOp(ctx, "get_task_group", duration, err)
+	s.logDBOp(ctx, "get_task_groups", duration, err)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +566,7 @@ func (s *Storage) GetTaskGroupById(ctx context.Context, id int) (*model.TaskGrou
 	start := time.Now()
 
 	row := s.db.QueryRow(
-		"SELECT id, name, description, created_at FROM task_group WHERE id = ?",
+		"SELECT id, name, description, created_at FROM task_groups WHERE id = ?",
 		id,
 	)
 
@@ -598,7 +598,7 @@ func (s *Storage) GetTaskGroupById(ctx context.Context, id int) (*model.TaskGrou
 func (s *Storage) AssignTaskToGroup(ctx context.Context, taskID, groupID int) error {
 	start := time.Now()
 	var exists int
-	err := s.db.QueryRow("SELECT COUNT(*) FROM task_group WHERE id = ?", groupID).Scan(&exists)
+	err := s.db.QueryRow("SELECT COUNT(*) FROM task_groups WHERE id = ?", groupID).Scan(&exists)
 	if err != nil || exists == 0 {
 		return fmt.Errorf("group not found")
 	}
@@ -628,7 +628,7 @@ func (s *Storage) GetTasksByGroup(ctx context.Context, groupID int, statusFilter
 
 func (s *Storage) EditGroup(ctx context.Context, groupID int, name, description string) error {
 	start := time.Now()
-	_, err := s.db.ExecContext(ctx, "UPDATE task_group SET name = ?, description = ? WHERE id = ?", name, description, groupID)
+	_, err := s.db.ExecContext(ctx, "UPDATE task_groups SET name = ?, description = ? WHERE id = ?", name, description, groupID)
 	duration := time.Since(start)
 	s.logDBOp(ctx, "edit_group", duration, err, 
 		"group_id", groupID, 
