@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"tasksite/internal/config"
 	"tasksite/internal/logger"
 	"tasksite/internal/model"
 	"time"
@@ -31,6 +32,10 @@ type TaskWithRelations struct {
 	Username  string `json:"username,omitempty"`
 	GroupName string `json:"group_name,omitempty"`
 	GroupDesc string `json:"group_desc,omitempty"`
+}
+
+func NewConnectDB(config.Config){
+	
 }
 
 func ConnectDB(dbPath string) (*Storage, error) {

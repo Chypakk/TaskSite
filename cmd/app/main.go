@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"tasksite/internal/config"
 	"tasksite/internal/handler"
 	"tasksite/internal/storage"
 	"tasksite/internal/ws"
@@ -37,6 +38,13 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	// заглушка, в дальнейшем это будет основной метод
+	storage.NewConnectDB(cfg)
 
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
