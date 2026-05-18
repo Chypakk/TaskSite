@@ -1,0 +1,4 @@
+DROP INDEX IF EXISTS idx_tasks_group_id;
+ALTER TABLE tasks DROP CONSTRAINT IF EXISTS fk_tasks_group_id;
+ALTER TABLE tasks DROP COLUMN IF EXISTS group_id;
+DROP TABLE IF EXISTS task_groups;

@@ -13,7 +13,7 @@ type GroupService struct {
 	userRepo repository.UserRepository
 }
 
-func NewGroupService(storage *storage.Storage) *GroupService {
+func NewGroupService(storage storage.Storage) *GroupService {
 	return &GroupService{
 		repo: storage,
 		userRepo: storage,

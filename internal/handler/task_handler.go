@@ -19,7 +19,7 @@ type TaskHandler struct {
 	wsHub       *ws.Hub
 }
 
-func NewTaskHandler(storage *storage.Storage, wsHub *ws.Hub) *TaskHandler {
+func NewTaskHandler(storage storage.Storage, wsHub *ws.Hub) *TaskHandler {
 	return &TaskHandler{
 		taskService: service.NewTaskService(storage, storage, storage),
 		wsHub:       wsHub,

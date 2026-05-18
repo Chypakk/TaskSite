@@ -22,7 +22,7 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
-func NewSessionStore(storage *storage.Storage) *SessionStore {
+func NewSessionStore(storage storage.Storage) *SessionStore {
 	return &SessionStore{
 		repo: storage,
 	}

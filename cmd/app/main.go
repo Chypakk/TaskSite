@@ -43,14 +43,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	// заглушка, в дальнейшем это будет основной метод
-	storage.NewConnectDB(cfg)
 
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "tasksite.db"
-	}
-	storage, err := storage.ConnectDB(dbPath)
+	// dbPath := os.Getenv("DB_PATH")
+	// if dbPath == "" {
+	// 	dbPath = "tasksite.db"
+	// }
+	// storage, err := storage.ConnectDB(dbPath)
+
+	storage, err := storage.ConnectDB(cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}

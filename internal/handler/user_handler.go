@@ -12,11 +12,11 @@ import (
 )
 
 type UserHandler struct {
-	storage      *storage.Storage
+	storage      storage.Storage
 	sessionStore *SessionStore
 }
 
-func NewUserHandler(storage *storage.Storage) *UserHandler {
+func NewUserHandler(storage storage.Storage) *UserHandler {
 	return &UserHandler{
 		storage:      storage,
 		sessionStore: NewSessionStore(storage),

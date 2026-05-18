@@ -17,7 +17,7 @@ type TaskGroupHandler struct {
 	groupService *service.GroupService
 }
 
-func NewTaskGroupHandler(storage *storage.Storage) *TaskGroupHandler {
+func NewTaskGroupHandler(storage storage.Storage) *TaskGroupHandler {
 	return &TaskGroupHandler{groupService: service.NewGroupService(storage)}
 }
 

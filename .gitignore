@@ -31,3 +31,4 @@ go.work.sum
 
 # Database files
 *.db
+/cmd/migrate
